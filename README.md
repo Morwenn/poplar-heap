@@ -47,7 +47,7 @@ requirements.
 
 *Effects:* Constructs a poplar heap out of the range `[first, last)`.
 
-*Complexity:* O(`last - first`) comparisons. 
+*Complexity:* O(*N* log(*N*)) comparisons, where *N* = `last - first`.
 
 ```cpp
 template<
@@ -64,12 +64,26 @@ requirements of `ValueSwappable`. The type of `*first` shall satisfy the require
 
 *Effects:* Sorts elements in the poplar heap `[first, last)`.
 
-*Complexity:* O(*N* log(*N*)) comparisons, where *N* = `last - first`. 
+*Complexity:* O(*N* log(*N*)) comparisons, where *N* = `last - first`.
 
 ## Poplar sort
 
+Poplar sort is a heapsort-like algorithm derived from smoothsort that builds of forest of specific trees named
+"poplars" before sorting them. The structure in described as follows in the original *Smoothsort Revisited* paper:
+
+> Let us first define a heap to be a binary tree having its maximal element in the root and having two subtrees each of
+which is empty or a heap. A heap is called perfect if both subtrees are empty or perfect heaps of the same size. A
+poplar is defined to be a perfect heap mapped on a contiguous section of the array in the form of two subpoplars (or
+empty sections) followed by the root.
+
+Because of its specific structure, we can already intuitively note that the size of a poplar is always a power of two
+minus one. This property is extensively used in the algorithm. The following graph represents a poplar containing seven
+elements, and shows how it is mapped to an array:
+
+![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar.png)
+
 TODO
 
-## Poplar heap operations with O(1) extra space
+## Poplar sort revisited: heap operations with O(1) extra space
 
 TODO

@@ -76,6 +76,15 @@ namespace poplar
             }
         }
 
+        template<typename BidirectionalIterator, typename Compare>
+        auto insertion_sort(BidirectionalIterator first, BidirectionalIterator last,
+                            Compare compare)
+            -> void
+        {
+            if (first == last) return;
+            unchecked_insertion_sort(std::move(first), std::move(last), std::move(compare));
+        }
+
         ////////////////////////////////////////////////////////////
         // Poplar heap specific helper functions
         ////////////////////////////////////////////////////////////
@@ -110,6 +119,25 @@ namespace poplar
                 child_root1 = root - 1;
                 child_root2 = max_root + (size / 2 - size);
             }
+        }
+
+        template<typename RandomAccessIterator, typename Size, typename Compare=std::less<>>
+        auto is_poplar(RandomAccessIterator first, Size size, Compare compare={})
+            -> bool
+        {
+            // Assumes that the size is a power of 2 minus 1
+            if (size < 2) return true;
+
+            auto root = first + (size - 1);
+            auto child_root1 = root - 1;
+            if (compare(*root, *child_root1)) return false;
+
+            auto child_root2 = first + (size / 2 - 1);
+            if (compare(*root, *child_root2)) return false;
+
+            // Recurse in children
+            return is_poplar(first, size / 2, compare)
+                && is_poplar(first + size / 2, size / 2, compare);
         }
 
         template<typename RandomAccessIterator, typename Size, typename Compare>
@@ -247,6 +275,50 @@ namespace poplar
             --last;
             --size;
         } while (size > 1);
+    }
+
+    template<typename RandomAccessIterator, typename Compare=std::less<>>
+    auto is_heap2(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
+        -> bool
+    {
+        using poplar_size_t = std::make_unsigned_t<
+            typename std::iterator_traits<RandomAccessIterator>::difference_type
+        >;
+        poplar_size_t size = std::distance(first, last);
+        if (size < 2) return true;
+
+        auto poplar_size = detail::hyperfloor(size) - 1;
+        auto it = first;
+        do {
+            if (poplar_size_t(std::distance(it, last)) >= poplar_size) {
+                auto begin = it;
+                auto end = it + poplar_size;
+                if (not detail::is_poplar(begin, poplar_size, compare)) {
+                    return false;
+                }
+                it = end;
+            } else {
+                poplar_size = (poplar_size + 1) / 2 - 1;
+            }
+        } while (poplar_size > 0);
+
+        // If every supposed perfect binary is indeed a perfect binary heap,
+        // then the passed collection is indeed a poplar heap
+        return true;
+    }
+
+
+    template<typename RandomAccessIterator, typename Compare=std::less<>>
+    auto is_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
+        -> bool
+    {
+        using poplar_size_t = std::make_unsigned_t<
+            typename std::iterator_traits<RandomAccessIterator>::difference_type
+        >;
+        poplar_size_t size = std::distance(first, last);
+        if (size < 2) return true;
+
+        // TODO: figure something out with binary adder sequence?
     }
 }
 
