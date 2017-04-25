@@ -66,7 +66,7 @@ requirements of `ValueSwappable`. The type of `*first` shall satisfy the require
 
 *Complexity:* O(*N* log(*N*)) comparisons, where *N* = `last - first`.
 
-## Poplar sort
+## Poplar heap
 
 Poplar sort is a heapsort-like algorithm derived from smoothsort that builds of forest of specific trees named
 "poplars" before sorting them. The structure in described as follows in the original *Smoothsort Revisited* paper:
@@ -81,6 +81,18 @@ minus one. This property is extensively used in the algorithm. The following gra
 elements, and shows how it is mapped to an array:
 
 ![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar.png)
+
+Now, let us define a "poplar heap" to be a forest of poplars organized in such a way that the bigger poplars come first
+and the smaller poplars come last. Moreover, the poplars should be as big as they possinly can. For example if a poplar
+heap contains 12 elements, it will be made of 4 poplars with respectively 7, 3, 1 and 1 elements. Two properties of
+poplar heaps described in the original paper are worth mentioning:
+
+* There can't be more than O(log n) poplars in a poplar heap of n elements.
+* Only the last two poplars can have a similar size.
+
+![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
+
+## Poplar sort
 
 TODO
 
