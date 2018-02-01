@@ -11,7 +11,7 @@ library does not mean to provide performant algorithms. Its goals are different:
 * Showing that operations used in poplar sort can be decoupled
 * Providing a proof-of-concept implementation
 
-## The heap algorithms
+# The heap algorithms
 
 The following functions are provided by the poplar-heap library:
 
@@ -91,9 +91,11 @@ which the range `[first, it)` is a poplar heap.
 
 *Complexity:* O(`last - first`).
 
-## Poplar heap
+# Poplar heap
 
-Poplar sort is a heapsort-like algorithm derived from smoothsort that builds of forest of specific trees named
+### Poplars
+
+Poplar sort is a heapsort-like algorithm derived from smoothsort that builds a forest of specific trees named
 "poplars" before sorting them. The structure in described as follows in the original *Smoothsort Revisited* paper:
 
 > Let us first define a heap to be a binary tree having its maximal element in the root and having two subtrees each of
@@ -108,7 +110,7 @@ elements, and shows how it is mapped to an array:
 ![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar.png)
 
 Now, let us define a "poplar heap" to be a forest of poplars organized in such a way that the bigger poplars come first
-and the smaller poplars come last. Moreover, the poplars should be as big as they possinly can. For example if a poplar
+and the smaller poplars come last. Moreover, the poplars should be as big as they possibly can. For example if a poplar
 heap contains 12 elements, it will be made of 4 poplars with respectively 7, 3, 1 and 1 elements. Two properties of
 poplar heaps described in the original paper are worth mentioning:
 
@@ -117,10 +119,67 @@ poplar heaps described in the original paper are worth mentioning:
 
 ![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
 
-## Poplar sort
+### Semipoplars
 
-TODO
+To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of semipoplar: a semipoplar has
+the same properties as a poplar except that the root can be smaller than be smaller than the roots of the subtrees. A
+semipoplar is mostly useful to represent an intermediate case where we are building a bigger poplar from two subpoplars
+and a root. Here is an example of a semipoplar:
+
+![Semipoplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
+
+A semipoplar can be transformed into a poplar thanks to a procedure called *sift*, which is actually pretty close from
+the equivalent procedure in heapsort: if the root of the semipoplar is smaller than that of a subpoplar, swap it with
+the bigger of the two subpoplar roots, and recursively call *sift* on the subpoplar whose root has been swapped until
+the whole thing becomes a poplar again. A naive C++ implementation of the algorithm would look like this (to avoid
+boilerplate, we don't template the examples on the comparison operators):
+
+```cpp
+/**
+ * Transform a semipoplar into a poplar
+ *
+ * @param first Iterator to the first element of the semipoplar
+ * @param size Size of the semipoplar
+ */
+template<typename Iterator, typename Size>
+void sift(Iterator first, Size size)
+{
+    if (size < 2) return;
+
+    // Find the root of the semipoplar and those of the subpoplars
+    auto root = first + (size - 1);
+    auto child_root1 = root - 1;
+    auto child_root2 = first + (size / 2 - 1);
+
+    // Pick the bigger of the roots
+    auto max_root = root;
+    if (*max_root < *child_root1) {
+        max_root = child_root1;
+    }
+    if (*max_root, *child_root2) {
+        max_root = child_root2;
+    }
+
+    // If one of the roots of the subpoplars was the biggest of all, swap it
+    // with the root of the semipoplar, and recursively call sift of this
+    // subpoplar
+    if (max_root != root) {
+        std::iter_swap(root, max_root);
+        sift(max_root - (size / 2 - 1), size / 2);
+    }
+}
+```
+
+# Poplar sort
+
+## Original poplar sort
+
+TODO: describe the original poplar sort
 
 ## Poplar sort revisited: heap operations with O(1) extra space
 
-TODO
+TODO: make_heap, sort_heap, pop_heap
+
+## Additional poplar heap methods
+
+TODO: is_heap_until, is_heap, push_heap
