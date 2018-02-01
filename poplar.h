@@ -122,50 +122,6 @@ namespace poplar
         }
 
         template<typename RandomAccessIterator, typename Size, typename Compare>
-        auto make_poplar(RandomAccessIterator first, RandomAccessIterator last,
-                         Size size, Compare compare)
-            -> void
-        {
-            if (size < 2) return;
-
-            if (size < 16) {
-                // A sorted collection is a valid poplar heap;
-                // when the heap is small, using insertion sort
-                // should be faster
-                unchecked_insertion_sort(std::move(first), std::move(last), std::move(compare));
-                return;
-            }
-
-            using poplar_level_t = std::make_unsigned_t<
-                typename std::iterator_traits<RandomAccessIterator>::difference_type
-            >;
-            poplar_level_t poplar_level = 1;
-
-            auto it = first;
-            auto next = std::next(it, 15);
-            while (true) {
-                // Make a 15 element poplar
-                unchecked_insertion_sort(it, next, compare);
-
-                // Sift elements to collapse poplars
-                Size poplar_size = 15;
-                auto begin = it;
-                // The loop increment follows the binary carry sequence for some reason
-                for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
-                    begin -= poplar_size;
-                    poplar_size = 2 * poplar_size + 1;
-                    sift(begin, poplar_size, compare);
-                    ++next;
-                }
-
-                if (next == last) return;
-                it = next;
-                std::advance(next, 15);
-                ++poplar_level;
-            }
-        }
-
-        template<typename RandomAccessIterator, typename Size, typename Compare>
         auto pop_heap_with_size(RandomAccessIterator first, RandomAccessIterator last,
                                 Size size, Compare compare)
             -> void
@@ -221,24 +177,52 @@ namespace poplar
     auto make_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
         -> void
     {
-        using poplar_size_t = std::make_unsigned_t<
+        using poplar_diff_t = std::make_unsigned_t<
             typename std::iterator_traits<RandomAccessIterator>::difference_type
         >;
-        poplar_size_t size = std::distance(first, last);
+
+        poplar_diff_t size = std::distance(first, last);
         if (size < 2) return;
 
-        auto poplar_size = detail::hyperfloor(size) - 1;
+        // A sorted collection is a valid poplar heap; whenever the heap
+        // is small, using insertion sort should be faster, which is why
+        // we start by constructing 15-element poplars instead of 1-element
+        // ones as the base case
+        constexpr poplar_diff_t small_poplar_size = 15;
+        if (size <= small_poplar_size) {
+            detail::unchecked_insertion_sort(std::move(first), std::move(last),
+                                             std::move(compare));
+            return;
+        }
+
+        // Determines the "level" of the biggest poplar seen so far
+        poplar_diff_t poplar_level = 1;
+
         auto it = first;
-        do {
-            if (poplar_size_t(std::distance(it, last)) >= poplar_size) {
-                auto begin = it;
-                auto end = it + poplar_size;
-                detail::make_poplar(begin, end, poplar_size, compare);
-                it = end;
-            } else {
-                poplar_size = (poplar_size + 1) / 2 - 1;
+        auto next = std::next(it, small_poplar_size);
+        while (true) {
+            // Make a 15 element poplar
+            detail::unchecked_insertion_sort(it, next, compare);
+
+            poplar_diff_t poplar_size = small_poplar_size;
+            // The loop increment follows the binary carry sequence for some reason
+            for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
+                it -= poplar_size;
+                poplar_size = 2 * poplar_size + 1;
+                detail::sift(it, poplar_size, compare);
+                ++next;
             }
-        } while (poplar_size > 0);
+
+            if (poplar_diff_t(std::distance(next, last)) <= small_poplar_size) {
+                detail::insertion_sort(std::move(next), std::move(last),
+                                       std::move(compare));
+                return;
+            }
+
+            it = next;
+            std::advance(next, small_poplar_size);
+            ++poplar_level;
+        }
     }
 
     template<typename RandomAccessIterator, typename Compare=std::less<>>
