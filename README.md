@@ -66,6 +66,31 @@ requirements of `ValueSwappable`. The type of `*first` shall satisfy the require
 
 *Complexity:* O(*N* log(*N*)) comparisons, where *N* = `last - first`.
 
+```cpp
+template<
+    typename RandomAccessIterator,
+    typename Compare = std::less<>
+>
+void is_heap(RandomAccessIterator first, RandomAccessIterator last,
+             Compare compare={});
+```
+
+*Returns:* `is_heap_until(first, last, compare) == last`.
+
+```cpp
+template<
+    typename RandomAccessIterator,
+    typename Compare = std::less<>
+>
+void is_heap_until(RandomAccessIterator first, RandomAccessIterator last,
+                   Compare compare={});
+```
+
+*Returns:* If `(last - first) < 2`, returns `last`. Otherwise, returns the last iterator `it` in `[first, last]` for
+which the range `[first, it)` is a poplar heap.
+
+*Complexity:* O(`last - first`).
+
 ## Poplar heap
 
 Poplar sort is a heapsort-like algorithm derived from smoothsort that builds of forest of specific trees named

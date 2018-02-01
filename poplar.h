@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017 Morwenn
+ * Copyright (c) 2017-2018 Morwenn
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,10 +44,10 @@ namespace poplar
 
         // Returns 2^floor(log2(n)), assumes n > 0
         template<typename Unsigned>
-        auto hyperfloor(Unsigned n)
+        constexpr auto hyperfloor(Unsigned n)
             -> Unsigned
         {
-            static constexpr auto bound = std::numeric_limits<Unsigned>::digits / 2;
+            constexpr auto bound = std::numeric_limits<Unsigned>::digits / 2;
             for (std::size_t i = 1 ; i <= bound ; i <<= 1) {
                 n |= (n >> i);
             }
@@ -119,25 +119,6 @@ namespace poplar
                 child_root1 = root - 1;
                 child_root2 = max_root + (size / 2 - size);
             }
-        }
-
-        template<typename RandomAccessIterator, typename Size, typename Compare=std::less<>>
-        auto is_poplar(RandomAccessIterator first, Size size, Compare compare={})
-            -> bool
-        {
-            // Assumes that the size is a power of 2 minus 1
-            if (size < 2) return true;
-
-            auto root = first + (size - 1);
-            auto child_root1 = root - 1;
-            if (compare(*root, *child_root1)) return false;
-
-            auto child_root2 = first + (size / 2 - 1);
-            if (compare(*root, *child_root2)) return false;
-
-            // Recurse in children
-            return is_poplar(first, size / 2, compare)
-                && is_poplar(first + size / 2, size / 2, compare);
         }
 
         template<typename RandomAccessIterator, typename Size, typename Compare>
@@ -278,47 +259,57 @@ namespace poplar
     }
 
     template<typename RandomAccessIterator, typename Compare=std::less<>>
-    auto is_heap2(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
-        -> bool
+    auto is_heap_until(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
+        -> RandomAccessIterator
     {
-        using poplar_size_t = std::make_unsigned_t<
+        if (std::distance(first, last) < 2) {
+            return last;
+        }
+
+        using poplar_diff_t = std::make_unsigned_t<
             typename std::iterator_traits<RandomAccessIterator>::difference_type
         >;
-        poplar_size_t size = std::distance(first, last);
-        if (size < 2) return true;
+        // Determines the "level" of the biggest poplar seen so far
+        poplar_diff_t poplar_level = 1;
 
-        auto poplar_size = detail::hyperfloor(size) - 1;
         auto it = first;
-        do {
-            if (poplar_size_t(std::distance(it, last)) >= poplar_size) {
-                auto begin = it;
-                auto end = it + poplar_size;
-                if (not detail::is_poplar(begin, poplar_size, compare)) {
-                    return false;
+        auto next = std::next(it);
+        while (true) {
+            poplar_diff_t poplar_size = 1;
+
+            // The loop increment follows the binary carry sequence for some reason
+            for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
+                // Beginning and size of the poplar to track
+                it -= poplar_size;
+                poplar_size = 2 * poplar_size + 1;
+
+                // Check poplar property against child roots
+                auto root = it + (poplar_size - 1);
+                auto child_root1 = root - 1;
+                if (compare(*root, *child_root1)) {
+                    return next;
                 }
-                it = end;
-            } else {
-                poplar_size = (poplar_size + 1) / 2 - 1;
+                auto child_root2 = it + (poplar_size / 2 - 1);
+                if (compare(*root, *child_root2)) {
+                    return next;
+                }
+
+                if (next == last) return last;
+                ++next;
             }
-        } while (poplar_size > 0);
 
-        // If every supposed perfect binary is indeed a perfect binary heap,
-        // then the passed collection is indeed a poplar heap
-        return true;
+            if (next == last) return last;
+            it = next;
+            ++next;
+            ++poplar_level;
+        }
     }
-
 
     template<typename RandomAccessIterator, typename Compare=std::less<>>
     auto is_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
         -> bool
     {
-        using poplar_size_t = std::make_unsigned_t<
-            typename std::iterator_traits<RandomAccessIterator>::difference_type
-        >;
-        poplar_size_t size = std::distance(first, last);
-        if (size < 2) return true;
-
-        // TODO: figure something out with binary adder sequence?
+        return poplar::is_heap_until(first, last, compare) == last;
     }
 }
 
