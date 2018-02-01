@@ -1,0 +1,5 @@
+# Ignore Texmaker files
+graphs/*.aux
+graphs/*.synctex.gz
+graphs/*.log
+graphs/*.pdf
