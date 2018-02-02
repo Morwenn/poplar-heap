@@ -152,7 +152,7 @@ namespace poplar
             if (bigger != last_root) {
                 using std::swap;
                 swap(*bigger, *last_root);
-                sift(bigger - (bigger_size - 1), bigger_size, compare);
+                sift(bigger - (bigger_size - 1), bigger_size, std::move(compare));
             }
         }
     }
@@ -160,6 +160,26 @@ namespace poplar
     ////////////////////////////////////////////////////////////
     // Standard-library-style make_heap and sort_heap
     ////////////////////////////////////////////////////////////
+
+    template<typename RandomAccessIterator, typename Compare=std::less<>>
+    auto push_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
+        -> void
+    {
+        using poplar_size_t = std::make_unsigned_t<
+            typename std::iterator_traits<RandomAccessIterator>::difference_type
+        >;
+        poplar_size_t size = std::distance(first, last);
+
+        // Find the size of the poplar that will contain the new element in O(log n)
+        poplar_size_t last_poplar_size = detail::hyperfloor(size + 1u) - 1u;
+        while (size - last_poplar_size != 0) {
+            size -= last_poplar_size;
+            last_poplar_size = detail::hyperfloor(size + 1u) - 1u;
+        }
+
+        // Sift the new element in its poplar in O(log n)
+        detail::sift(std::prev(last, last_poplar_size), last_poplar_size, std::move(compare));
+    }
 
     template<typename RandomAccessIterator, typename Compare=std::less<>>
     auto pop_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})

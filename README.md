@@ -20,6 +20,22 @@ template<
     typename RandomAccessIterator,
     typename Compare = std::less<>
 >
+void push_heap(RandomAccessIterator first, RandomAccessIterator last,
+               Compare compare={});
+```
+
+*Requires:* The range `[first, last - 1)` shall be a valid poplar heap. The type of `*first` shall satisfy the
+`MoveConstructible` requirements and the `MoveAssignable` requirements.
+
+*Effects:* Places the value in the location `last - 1` into the resulting poplar heap `[first, last)`.
+
+*Complexity:* At most log(`last - first`) comparisons.
+
+```cpp
+template<
+    typename RandomAccessIterator,
+    typename Compare = std::less<>
+>
 void pop_heap(RandomAccessIterator first, RandomAccessIterator last,
               Compare compare={});
 ```
