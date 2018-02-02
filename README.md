@@ -135,6 +135,11 @@ poplar heaps described in the original paper are worth mentioning:
 
 ![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
 
+Another interesting property of poplar heaps is that a sorted collection is a valid poplar heap. One of the main ideas
+behind poplar sort was that an almost sorted collection would be faster to sort because constructing the poplar heap
+wouldn't move many elements around, while a regular heapsort can't take advantage of presortedness at all. We will see
+later that this property can actually be used to perform a few optimizations.
+
 ### Semipoplars
 
 To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of semipoplar: a semipoplar has
