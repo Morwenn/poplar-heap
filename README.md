@@ -193,7 +193,39 @@ void sift(Iterator first, Size size)
 
 # Poplar sort
 
+As most heapsort-like algorithms, poplar is divided into two main parts:
+
+* Turning the passed collection into a poplar heap
+* Sorting the poplar heap
+
+While making a binary heap can be made in O(n) time, I don't know of any way to make a poplar heap with anything better
+than O(n log n) time. In both cases, sorting the heap dominates the algorithm and runs in O(n log n) time. Be it the
+original algorithm described by Bron & Hesselink or the revisited algorithm that I will describe later, both are split
+into these two distinct phases.
+
 ## Original poplar sort
+
+The original poplar sort algorithm actually stores up to log2(n) integers to represent the positions of the poplars. We
+will use (and store) the following small structure instead to represent a poplar in order to simplify the understanding
+of the algorithm while preserving the original logic as well as the original space and time complexities:
+
+```cpp
+template<typename Iterator>
+struct poplar
+{
+    // The poplar is located at the position [begin, end) in the memory
+    Iterator begin, end;
+    // Unsigned integers because we're doing to perform bit tricks
+    std::make_unsigned_t<typename std::iterator_traits<Iterator>::difference_type> size;
+
+    auto root() const
+        -> Iterator
+    {
+        // The root of a poplar is always the last element
+        return std::prev(res);
+    }
+};
+```
 
 TODO: describe the original poplar sort
 
