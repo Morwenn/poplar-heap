@@ -507,7 +507,7 @@ we don't store anything, we don't have to reorganize poplars as the original alg
 switch and the call to *sift* everything is already done.
 
 ```cpp
-template<typename Iterator, typename Size>
+template<typename Iterator>
 void pop_heap(Iterator first, Iterator last)
 {
     // Make sure to use an unsigned integer so that hyperfloor works correctly
@@ -555,7 +555,44 @@ so the interest of the O(1) space version is mainly theoretical.
 
 ## Pushing the experiment further
 
-TODO: make_heap on steroids, insertion sort & cool integers sequences
+We have already reached our goal of making the poplar heap an implicit data structure, but there is still more to be
+said about it. This section contains both trivial improvements and other ways to think about some heap operations. Some
+of the most interesting things are alas unproven and empirically derived, but I felt like it was worth mentioning them
+anyway.
+
+### Trivially improve `sort_heap`
+
+In the current state of things `pop_heap` computes the size of the sequence it is applied to every time it is called,
+which is probably suboptimal in `sort_heap` since we know the size to be one less at each iteration. A trivial
+improvement is to pass it down from `sort_heap` instead of recomputing it every time:
+
+```cpp
+template<typename Iterator>
+void sort_heap(Iterator first, Iterator last)
+{
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<Iterator>::difference_type
+    >;
+    poplar_size_t size = std::distance(first, last);
+    if (size < 2) return;
+
+    do {
+        // Same as pop_heap except it doesn't compute the size
+        pop_heap_with_size(first, last, size);
+        --last;
+        --size;
+    } while (size > 1);
+}
+```
+
+The same improvement can be made to the current implementation of `make_heap`, but we have more interesting plans for
+this function, so it will be left as an exercise to the reader.
+
+### Top-down `make_heap` implementation
+
+### Binary carry sequence out of the blue
+
+TODO: make_heap on steroids, insertion sort & cool integer sequences
 
 ## Additional poplar heap algorithms
 
