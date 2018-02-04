@@ -1,0 +1,58 @@
+\documentclass{standalone}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+\pagestyle{empty}
+
+\begin{document}
+
+\tikzset{
+  rtria/.style={
+    draw,
+    shape border uses incircle,
+    isosceles triangle,
+    isosceles triangle apex angle=90,
+    shape border rotate=-45,
+    xshift=0.1cm,
+    text width=1mm,
+    inner sep=2pt
+  }
+}
+
+\begin{tikzpicture}
+
+\tikzstyle{every node}=[rtria,draw,minimum size=0.6cm];
+
+% Draw the size 15 poplars
+\node (n1) at (0,-0.4) {};
+\node (n2) at (1,-0.4) {};
+\node (n4) at (3,-0.4) {};
+\node (n5) at (4,-0.4) {};
+\node (n8) at (7,-0.4) {};
+\node (n9) at (8,-0.4) {};
+\node (n11) at (10,-0.4) {};
+
+\tikzstyle{every node}=[draw,shape=circle,minimum size=0.75cm];
+
+% Draw the other poplar heap nodes
+\node (n3) at (2,1) {};
+\node (n6) at (5,1) {};
+\node (n7) at (6,2) {};
+\node (n10) at (9,1) {};
+
+% Links between the nodes
+\draw (n7) -- (n6)
+(n7) -- (n3)
+(n6) -- (n5)
+(n6) -- (n4)
+(n3) -- (n2)
+(n3) -- (n1)
+(n10) -- (n9)
+(n10) -- (n8);
+
+% Draw the array representation of the poplar heap 
+\tikzstyle{every node}=[draw,shape=rectangle,minimum width=1cm,minimum height=0.6cm,anchor=center];
+\foreach \x [count=\idx] in {0,1,,0,2,,,0,1,,0}
+  \node (r\idx) at (\idx-1,-1.2){\x};
+
+\end{tikzpicture}
+\end{document}
