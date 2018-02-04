@@ -590,7 +590,78 @@ this function, so it will be left as an exercise to the reader.
 
 ### Top-down `make_heap` implementation
 
-### Binary carry sequence out of the blue
+One of my first ideas to implement `make_heap` without storing iterators was to implement the function in a top-down
+fashion: we know the size of the poplar heap to build, which means that we know the size of the poplars that will
+constitute that poplar heap. Looking at the previous algorithms highlights a new interesting property: the poplars
+that will remain after the call to `make_heap` are actually independent of each other during construction time, which
+means that we can build them separately.
+
+How to make a poplar in a top-down fashion? The easiest solution is to recursively build the two subpoplars and sift
+the root, leading to a rather straightforward algorithm:
+
+```cpp
+template<typename Iterator, typename Size>
+void make_poplar(Iterator first, Size size)
+{
+    if (size < 2) return;
+
+    make_poplar(first, size / 2);
+    make_poplar(first + size / 2, size / 2);
+    sift(first, size);
+}
+```
+
+Such an algorithm makes it easy to reuse one of the properties of the poplars: a sorted collection is a valid poplar.
+It turns out that for small poplars, running a straight insertion sort is often faster in practice than recursively
+calling `make_poplar` until we reach the level of single-element poplars:
+
+```cpp
+template<typename Iterator, typename Size>
+void make_poplar(Iterator first, Size size)
+{
+    if (size < 16) {
+        insertion_sort(first, first + size);
+        return;
+    }
+
+    make_poplar(first, size / 2);
+    make_poplar(first + size / 2, size / 2);
+    sift(first, size);
+}
+```
+
+With such an algorithm, `make_heap` becomes an algorithm which iterates through the poplars to build them directly:
+
+```cpp
+template<typename Iterator>
+void make_heap(Iterator first, Iterator last)
+{
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<Iterator>::difference_type
+    >;
+    poplar_size_t size = std::distance(first, last);
+
+    // Build the poplars directly without fusion
+    poplar_size_t poplar_size = hyperfloor(size + 1u) - 1u;
+    while (true) {
+        // Make a poplar
+        make_poplar(first, poplar_size);
+        if (size - poplar_size == 0) return;
+
+        // Advance to the next poplar
+        first += poplar_size;
+        size -= poplar_size;
+        poplar_size = hyperfloor(size + 1u) - 1u;
+    }
+}
+```
+
+While I like the straightforward aspect of building the final poplars directly in place, `make_poplar` actually uses
+O(log n) extra space due to the double recursion, and it doesn't have the right properties to be optimized into a
+simple loop. This construction method is unfortunately unsuitable to implement the poplar heap operations with O(1)
+extra space.
+
+### Binary carry sequences out of the blue
 
 TODO: make_heap on steroids, insertion sort & cool integer sequences
 
