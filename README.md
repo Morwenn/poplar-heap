@@ -630,7 +630,9 @@ void make_poplar(Iterator first, Size size)
 }
 ```
 
-With such an algorithm, `make_heap` becomes an algorithm which iterates through the poplars to build them directly:
+The implementation of insertion sort is omitted here because it's irrelevant for the explanation, but you can still
+find it in the source code in the repository. With such an algorithm, `make_heap` becomes an algorithm which iterates
+through the poplars to build them directly:
 
 ```cpp
 template<typename Iterator>
@@ -663,7 +665,95 @@ extra space.
 
 ### Binary carry sequences out of the blue
 
-TODO: make_heap on steroids, insertion sort & cool integer sequences
+The `make_heap` implementation above made me want to try more things, namely to see whether I could find an iterative
+`make_heap` algorithm that could still benefit from the insertion sort optimization. It felt like it was possible to
+alternate building 15-element poplars and sifting other elements to make bigger poplar, but the logic behind that was
+not obvious. At some point, I started to draw the following diagram with in mind the question "how many elements do I
+need to sift between each 15-element poplar?":
+
+![Alternating 15-element poplars and single elements](https://github.com/Morwenn/poplar-heap/blob/master/graphs/binary-carry-sequence.png)
+
+In the diagram above, you can find the global structure of the poplar heap as seen previously, but with a twist: the
+triangles represent 15-element poplars, the circles represent single elements, and the numbers below the triangles
+represent the number of elements to sift after the 15-element poplar above, considering that we sift every time two
+poplars of the same size come before the element to sift. The sequence goes on like this: 0, 1, 0, 2, 0, 1, 0, 3, 0, 1,
+0, 2, 0, 1, 0, 4, 0, 1, etc... There seemed to be some logic that I did not understand, so looked it up on the internet
+and found that it corresponded to the beginning of the *binary carry sequence*, [A007814 in the on-line encyclopedia of
+integer sequences](https://oeis.org/A007814). This specific sequence is also described as follows:
+
+> The sequence a(n) given by the exponents of the highest power of 2 dividing n
+
+Following some empirical intuition, I designed a `make_heap` algorithm as follows:
+
+* Initialize a counter *poplar_level* with 1
+* As long as the poplar heap isn't fully constructed, perform the following steps:
+  * Use insertion sort on the next 15 elements to make a poplar
+  * Perform the following operations log2(*poplar_level*) times:
+    * Find a poplar whose root is the next element and whose size is twice the size of the previous poplar plus one
+    * Sift the next element in the newly found poplar
+  * If there are fewer than 15 elements left in the collection, sort them with insertion sort
+
+I have no actual proof that the algorithm works and it doesn't feel super intuitive either, but I never managed to find
+a sequence of elements that would make it fail up to this day. Here is the C++ implementation of the algorithm
+described above, using some bit tricks in the increment of the inner loop to avoid having to actually compute a log2
+for every 15 elements:
+
+```cpp
+template<typename Iterator>
+void make_heap(Iterator first, Iterator last)
+{
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<Iterator>::difference_type
+    >;
+    poplar_size_t size = std::distance(first, last);
+    if (size < 2) return;
+
+    constexpr poplar_size_t small_poplar_size = 15;
+    if (size <= small_poplar_size) {
+        insertion_sort(first, last);
+        return;
+    }
+
+    // Determines the "level" of the poplars seen so far; the log2 of this
+    // variable will be used to make the binary carry sequence
+    poplar_size_t poplar_level = 1;
+
+    auto it = first;
+    auto next = std::next(it, small_poplar_size);
+    while (true) {
+        // Make a 15 element poplar
+        insertion_sort(it, next);
+
+        poplar_size_t poplar_size = small_poplar_size;
+        // Bit trick iterate without actually having to compute log2(poplar_level)
+        for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
+            it -= poplar_size;
+            poplar_size = 2 * poplar_size + 1;
+            sift(it, poplar_size);
+            ++next;
+        }
+
+        if (poplar_diff_t(std::distance(next, last)) <= small_poplar_size) {
+            insertion_sort(next, last);
+            return;
+        }
+
+        it = next;
+        std::advance(next, small_poplar_size);
+        ++poplar_level;
+    }
+}
+```
+
+Interestingly enough, the variable `small_poplar_size` can be equal to any number of the form 2^n-1 and the algorithm
+will still work, which means that setting it to 1 would give the most "basic" form of the algorithm, without the fancy
+insertion sort optimization. The similarity between the original poplar heap graph and the one with 15-element poplars
+already hinted at this result, which is most likely due to the recursive nature of the poplar structure.
+
+This new `make_heap` algorithm was actually faster in my benchmarks than repeatedly calling `push_heap`, which might be
+due to the insertion sort optimization, but also to the fact computing the size of the current "last" poplar is done in
+O(1) and not in O(log n). That said, the complexity is the same: O(n log n) time and O(1) space. We might not have
+found an O(n) algorithm to construct the poplar heap, but this one is definitely interesting.
 
 ## Additional poplar heap algorithms
 
