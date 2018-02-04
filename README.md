@@ -416,6 +416,55 @@ If we manage to implement both `push_heap` and `pop_heap` to run in O(log n) tim
 that both `make_heap` and `sort_heap` will run in O(n log n) time with O(1) space, making the whole poplar sort
 algorithm run with the same time and space complexities.
 
+### Finding the poplars in O(log n) time
+
+Both `push_heap` and `pop_heap` require one to know where the main poplars forming the poplar heap are located. The
+original poplar sort algorithm stored the positions of the poplars for that exact reason. In order to achieve that
+without storing anything, we can go back to the original properties of a poplar heap:
+
+* The size of a poplar is always of the form 2^n-1
+* The poplars are stored from the bigger to the smaller
+* Poplars are always as big as they possibly can
+
+Taking all of that into account, we can find the first poplar like this:
+
+* It begins at the beginning of the poplar heap
+* Its size is the biggest number of the form 2^n-1 which is smaller or equal to the size
+
+Once it is found we can find the following poplar, then the following ones by repeatedly applying that operation to the
+rest of the poplar heap. The following function can be used to find the biggest power of two smaller then or equal to a
+given unsigned integer (sometimes known as the *hyperfloor* of the number):
+
+```cpp
+template<typename Unsigned>
+Unsigned hyperfloor(Unsigned n)
+{
+    constexpr auto bound = std::numeric_limits<Unsigned>::digits / 2;
+    for (std::size_t i = 1 ; i <= bound ; i <<= 1) {
+        n |= (n >> i);
+    }
+    return n & ~(n >> 1);
+}
+```
+
+The function above works most of the time but only for unsigned integers. It is worth nothing that it also returns 0
+when given 0 even though it's not a power of 2. Given that function and the size of the poplar heap, the size of the
+first poplar can be found with the following operation:
+
+```cpp
+auto first_poplar_size = hyperfloor(size + 1u) - 1u;
+```
+
+Interestingly enough, this operation works even when `size` is the biggest representable value of its type: since we
+are only working with unsigned numbers, `size + 1u == 0` in this case since unsigned integers are guaranteed to wrap
+around when overflowing. As we have seen before, our `hyperfloor` implementation returns 0 when given 0, so retrieving
+1 to that result will give back the original value of `size` back wrapping around once again. Fortunately the biggest
+representable value of an unsigned integer type happens to be of the form 2^n-1, which is exactly what we expect. In
+this case the first poplar is the only one and covers the whole poplar heap.
+
+Since there are at most log(n) poplars in a poplar heap, iterating through all of them takes O(log n) time without
+storing more than O(1) information.
+
 TODO: push_heap, pop_heap
 
 ## Pushing the experiment further
