@@ -324,13 +324,67 @@ do {
         poplars.push_back({begin1, begin2, poplar_size});
         poplars.push_back({begin2, begin2 + poplar_size, poplar_size});
     }
-} while (poplars.size() > 0);
+} while (not poplars.empty());
 ```
 
 And that's pretty much it for the original poplar sort; I hope that it my explanation was understandable enough. If
 something wasn't clear, don't hesitate to mention it, open an issue and/or suggest improvements to the wording.
 
 ## Poplar sort revisited: heap operations with O(1) extra space
+
+As I worked on poplar sort to try to make it faster, I noticed a few things and an idea came to my mind: would it be
+possible to make poplar sort run without storing an array of poplars, basically making it run with O(1) extra space and
+thus making it an [implicit data structure](https://en.wikipedia.org/wiki/Implicit_data_structure)?
+
+Even better: would it be possible to decouple the heap operations in order to reimplement the heap interface in the C++
+standard library? Would it be possible to do so while keeping the current complexity guarantees of poplar sort and use
+O(1) space for every operation?
+
+I think I eventually managed to do just that as we will see in this section.
+
+### `sift` with O(1) space
+
+First thing first: the procedure *sift* currently runs in O(log n): it can recursively call itself up to log(n) times
+before the semipoplar has been transformed into a poplar. On the other hand, calling itself is only done once as the
+last operation of the procude, which basically makes *sift* a tail recursive function. The compiler might transform
+that into a loop, but we can also do that ourselves just in case:
+
+```cpp
+template<typename Iterator, typename Size>
+void sift(Iterator first, Size size)
+{
+    if (size < 2) return;
+
+    auto root = first + (size - 1);
+    auto child_root1 = root - 1;
+    auto child_root2 = first + (size / 2 - 1);
+
+    while (true) {
+        auto max_root = root;
+        if (*max_root < *child_root1) {
+            max_root = child_root1;
+        }
+        if (*max_root < *child_root2) {
+            max_root = child_root2;
+        }
+        if (max_root == root) return;
+
+        using std::swap;
+        swap(*root, *max_root);
+
+        size /= 2;
+        if (size < 2) return;
+
+        root = max_root;
+        child_root1 = root - 1;
+        child_root2 = max_root + (size / 2 - size);
+    }
+}
+```
+
+It was a pretty mechanical change, but we now have the guarantee that *sift* will run in O(log n) time and O(1) space.
+Considering that it is used in most poplar heap operations, it ensures that the space complexities of the other heap
+operations won't grow because of it.
 
 TODO: push_heap, pop_heap, make_heap, sort_heap
 
