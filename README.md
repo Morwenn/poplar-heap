@@ -271,7 +271,64 @@ void poplar_sort(Iterator first, Iterator last)
 }
 ```
 
-TODO: describe the original poplar sort
+Now that we have our poplar heap, it's time to sort it. Just like a regular heapsort it's done by popping elements from
+the poplar heap one by one. Popping an element works as follows:
+
+* Switch the biggest of the poplar roots with the root of the last poplar
+* Apply the *sift* procedure to the poplar whose root has been taken to restore the poplar invariants
+* Remove the last element from the heap
+* If that element formed a single-element poplar, we are done
+* Otherwise split the rest of the last poplar into two poplars of equal size
+
+The first two steps are known as the *relocate* procedure in the original paper, which can be roughly implemented as
+follows:
+
+```cpp
+template<typename Iterator>
+void relocate(std::vector<poplar<Iterator>>& poplars)
+{
+    // Find the poplar with the bigger root, assuming that there is
+    // always at least one poplar in the vector
+    auto last = std::prev(std::end(poplars));
+    auto bigger = last;
+    for (auto it = std::begin(poplars) ; it != last ; ++it) {
+        if (*bigger->root() < *it->root()) {
+            bigger = it;
+        }
+    }
+
+    // Swap & sift if needed
+    if (bigger != last) {
+        std::iter_swap(bigger->root(), last->root());
+        sift(bigger->begin, bigger->size);
+    }
+}
+```
+
+The loop to sort the poplar heap element by element (which replaces our previous TODO comment in `poplar_sort`) looks
+like this:
+
+```cpp
+// Sort the poplar heap
+do {
+    relocate(poplars);
+    if (poplars.back().size == 1) {
+        poplars.pop_back();
+    } else {
+        // Find bounds of the new poplars
+        auto poplar_size = poplars.back().size / 2;
+        auto begin1 = poplars.back().begin;
+        auto begin2 = begin1 + size;
+        // Split the poplar in two poplars, don't keep the last element
+        poplars.pop_back();
+        poplars.push_back({begin1, begin2, poplar_size});
+        poplars.push_back({begin2, begin2 + poplar_size, poplar_size});
+    }
+} while (poplars.size() > 0);
+```
+
+And that's pretty much it for the original poplar sort; I hope that it my explanation was understandable enough. If
+something wasn't clear, don't hesitate to mention it, open an issue and/or suggest improvements to the wording.
 
 ## Poplar sort revisited: heap operations with O(1) extra space
 
