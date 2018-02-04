@@ -126,7 +126,7 @@ namespace poplar
                                 Size size, Compare compare)
             -> void
         {
-            auto poplar_size = detail::hyperfloor(size) - 1;
+            auto poplar_size = detail::hyperfloor(size + 1u) - 1u;
             auto last_root = std::prev(last);
             auto bigger = last_root;
             auto bigger_size = poplar_size;
@@ -134,24 +134,22 @@ namespace poplar
             // Look for the bigger poplar root
             auto it = first;
             while (true) {
-                if (Size(std::distance(it, last)) >= poplar_size) {
-                    auto root = it + (poplar_size - 1);
-                    if (root == last_root) break;
-                    if (compare(*bigger, *root)) {
-                        bigger = root;
-                        bigger_size = poplar_size;
-                    }
-                    it = std::next(root);
-                } else {
-                    poplar_size = (poplar_size + 1) / 2 - 1;
+                auto root = std::next(it, poplar_size - 1);
+                if (root == last_root) break;
+                if (compare(*bigger, *root)) {
+                    bigger = root;
+                    bigger_size = poplar_size;
                 }
+                it = std::next(root);
+
+                size -= poplar_size;
+                poplar_size = hyperfloor(size + 1u) - 1u;
             }
 
             // If a poplar root was bigger than the last one, exchange
             // them and sift
             if (bigger != last_root) {
-                using std::swap;
-                swap(*bigger, *last_root);
+                std::iter_swap(bigger, last_root);
                 sift(bigger - (bigger_size - 1), bigger_size, std::move(compare));
             }
         }
