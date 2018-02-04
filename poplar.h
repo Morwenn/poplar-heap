@@ -213,7 +213,8 @@ namespace poplar
             return;
         }
 
-        // Determines the "level" of the biggest poplar seen so far
+        // Determines the "level" of the poplars seen so far; the log2 of this
+        // variable will be used to make the binary carry sequence
         poplar_diff_t poplar_level = 1;
 
         auto it = first;
@@ -223,7 +224,7 @@ namespace poplar
             detail::unchecked_insertion_sort(it, next, compare);
 
             poplar_diff_t poplar_size = small_poplar_size;
-            // The loop increment follows the binary carry sequence for some reason
+            // Bit trick iterate without actually having to compute log2(poplar_level)
             for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
                 it -= poplar_size;
                 poplar_size = 2 * poplar_size + 1;
@@ -271,7 +272,8 @@ namespace poplar
         using poplar_diff_t = std::make_unsigned_t<
             typename std::iterator_traits<RandomAccessIterator>::difference_type
         >;
-        // Determines the "level" of the biggest poplar seen so far
+        // Determines the "level" of the poplars seen so far; the log2 of this
+        // variable will be used to make the binary carry sequence
         poplar_diff_t poplar_level = 1;
 
         auto it = first;
@@ -279,7 +281,7 @@ namespace poplar
         while (true) {
             poplar_diff_t poplar_size = 1;
 
-            // The loop increment follows the binary carry sequence for some reason
+            // Bit trick iterate without actually having to compute log2(poplar_level)
             for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
                 // Beginning and size of the poplar to track
                 it -= poplar_size;
