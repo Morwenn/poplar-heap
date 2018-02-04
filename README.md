@@ -733,7 +733,7 @@ void make_heap(Iterator first, Iterator last)
             ++next;
         }
 
-        if (poplar_diff_t(std::distance(next, last)) <= small_poplar_size) {
+        if (poplar_size_t(std::distance(next, last)) <= small_poplar_size) {
             insertion_sort(next, last);
             return;
         }
@@ -757,4 +757,84 @@ found an O(n) algorithm to construct the poplar heap, but this one is definitely
 
 ## Additional poplar heap algorithms
 
-TODO: is_heap_until, is_heap
+While these functions are not needed to implement poplar sort, the C++ standard library also defines two functions to
+check whether a collection is already a heap:
+
+* `std::is_heap` checks whether the passed collection is a heap
+* `std::is_heap_until` returns the iterator `it` from the passed collection such as `[first, it)` is a heap
+
+The function `is_heap` can generally be implemented by checking whether `is_heap_until` returns `last`, and this is no
+different for a poplar heap:
+
+```cpp
+template<typename Iterator>
+bool is_heap(Iterator first, Iterator last)
+{
+    return is_heap_until(first, last) == last;
+}
+```
+
+The function `is_heap_until` can implemented by checking for every element whether it is bigger than the roots of both
+of its subpoplar when said element has subpoplars. By checking it from first to last element we ensure that the any
+element prior the current one is already part of a poplar heap, so we only need to check one level each time instead of
+recursively checking every time that the poplar property holds for every level of a poplar. This makes for a sweet O(n)
+algorithm that can be made to use only O(1) space by adapting the previous `make_heap` algorithm:
+
+```cpp
+template<typename Iterator>
+Iterator is_heap_until(Iterator first, Iterator last)
+{
+    if (std::distance(first, last) < 2) {
+        return last;
+    }
+
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<Iterator>::difference_type
+    >;
+    // Determines the "level" of the biggest poplar seen so far
+    poplar_size_t poplar_level = 1;
+
+    auto it = first;
+    auto next = std::next(it);
+    while (true) {
+        poplar_size_t poplar_size = 1;
+
+        // The loop increment follows the binary carry sequence for some reason
+        for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
+            // Beginning and size of the poplar to track
+            it -= poplar_size;
+            poplar_size = 2 * poplar_size + 1;
+
+            // Check poplar property against child roots
+            auto root = it + (poplar_size - 1);
+            auto child_root1 = root - 1;
+            if (*root < *child_root1) {
+                return next;
+            }
+            auto child_root2 = it + (poplar_size / 2 - 1);
+            if (*root < *child_root2) {
+                return next;
+            }
+
+            if (next == last) return last;
+            ++next;
+        }
+
+        if (next == last) return last;
+        it = next;
+        ++next;
+        ++poplar_level;
+    }
+}
+```
+
+In `make_heap` we could iterate over elements 15 by 15 because we had an optimization to handle 15 values at once. This
+is not the case for this algorithm, so we fall back to using a single element for `poplar_size`.
+
+# Conclusion
+
+That's pretty much it for poplar heap: we have seen several ways to implement operations with different size
+complexities depending on the method used. We managed to decouple poplar heap operations and to implement them without
+intermediate state and with O(1) space complexity, actually lowering the space complexity of the poplar sort algorithm
+as described in the original paper by Bron & Hesselink. This makes poplar heap a novel implicit data structure as far
+as I know. If you have any questions or improvements to suggest, don't hesitate to open an issue on the project :)
