@@ -386,7 +386,41 @@ It was a pretty mechanical change, but we now have the guarantee that *sift* wil
 Considering that it is used in most poplar heap operations, it ensures that the space complexities of the other heap
 operations won't grow because of it.
 
-TODO: push_heap, pop_heap, make_heap, sort_heap
+### Naive `make_heap` and `sort_heap` in O(n log n) time and O(1) space
+
+My first idea was to make `make_heap` and `sort_heap` work in O(n log n) time like they do in a naive implementation of
+heapsort: `make_heap` would iteratively push elements on the heap from first to last, and `sort_heap` would iteratively
+pop elements from the heap from last to first. The functions could be implemented as follows:
+
+```cpp
+template<typename Iterator>
+void make_heap(Iterator first, Iterator last)
+{
+    for (auto it = first ; it != last ; ++it) {
+        push_heap(first, it);
+    }
+    push_heap(first, last);
+}
+
+template<typename Iterator>
+void sort_heap(Iterator first, Iterator last)
+{
+    while (first != last) {
+        pop_heap(first, last);
+        --last;
+    }
+}
+```
+
+If we manage to implement both `push_heap` and `pop_heap` to run in O(log n) time with O(1) space, it is easy to see
+that both `make_heap` and `sort_heap` will run in O(n log n) time with O(1) space, making the whole poplar sort
+algorithm run with the same time and space complexities.
+
+TODO: push_heap, pop_heap
+
+## Pushing the experiment further
+
+TODO: make_heap on steroids, insertion sort & cool integers sequences
 
 ## Additional poplar heap algorithms
 
