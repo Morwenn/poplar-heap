@@ -221,18 +221,62 @@ struct poplar
     auto root() const
         -> Iterator
     {
-        // The root of a poplar is always the last element
+        // The root of a poplar is always its last element
         return std::prev(res);
     }
 };
+```
+
+With that structure we can easily make an array of poplars to represent the poplar heap. Storing both the beginning,
+end and size of a poplar is a bit redundant, but in my benchmarks it was what ended being the fastest at the end of the
+day: apparently computing them again and again wasn't the best solution.
+
+The poplar heap is constructed iteratively: elements are added to the poplar heap one at a time. Whenever such an
+element is added, it is first added as a single-element poplar at the end of the heap. Then, if the previous two
+poplars have the same size, both of them are combined in a bigger semipoplar where the new element serves as the root,
+and the *sift* procedure is applied to turn the new semipoplar into a full-fledged poplar. The first part of the poplar
+sort algorithm thus looks like this:
+
+```cpp
+template<typename Iterator>
+void poplar_sort(Iterator first, Iterator last)
+{
+    auto size = std::distance(first, last);
+    if (size < 2) return;
+
+    // Poplars forming the poplar heap
+    std::vector<poplar<Iterator>> poplars;
+
+    // Make a poplar heap
+    for (auto it = first ; it != last ; ++it) {
+        auto nb_pops = poplars.size();
+        if (nb_pops >= 2 && poplars[nb_pops-1].size == poplars[nb_pops-2].size) {
+            // Find the bounds of the new semipoplar
+            auto begin = poplars[nb_pops-2].begin;
+            auto end = std::next(it);
+            auto poplar_size = 2 * poplars[nb_pops-2].size + 1;
+            // Fuse the last two poplars and the new element into a semipoplar
+            poplars.pop();
+            poplars.pop();
+            poplars.push_back({begin, end, poplar_size});
+            // Turn the new semipoplar into a full-fledged poplar
+            sift(begin, poplar_size);
+        } else {
+            // Add the new element as a single-element poplar
+            poplars.push_back({it, std::next(it), 1});
+        }
+    }
+
+    // TODO: sort the poplar heap
+}
 ```
 
 TODO: describe the original poplar sort
 
 ## Poplar sort revisited: heap operations with O(1) extra space
 
-TODO: make_heap, sort_heap, pop_heap
+TODO: push_heap, pop_heap, make_heap, sort_heap
 
-## Additional poplar heap methods
+## Additional poplar heap algorithms
 
-TODO: is_heap_until, is_heap, push_heap
+TODO: is_heap_until, is_heap
