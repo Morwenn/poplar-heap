@@ -499,7 +499,59 @@ The size of the last poplar of the heap is found in O(log n) time, and *sift* ru
 `push_heap` procedure run in the expected O(log n) time and O(1) space, which means that we finally have `make_heap` in
 O(n log n) time and O(1) space.
 
-TODO: pop_heap
+### `pop_heap` in O(log n) time and O(1) space
+
+`pop_heap` is actually very much like the *relocate* procedure from the original poplar sort algorithm, except that we
+need to iterate the collection via the `hyperfloor` trick instead of using stored iterators. On the other hand, since
+we don't store anything, we don't have to reorganize poplars as the original algorithm does: after the biggest root
+switch and the call to *sift* everything is already done.
+
+```cpp
+template<typename Iterator, typename Size>
+void pop_heap(Iterator first, Iterator last)
+{
+    // Make sure to use an unsigned integer so that hyperfloor works correctly
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<Iterator>::difference_type
+    >;
+    poplar_size_t size = std::distance(first, last);
+
+    auto poplar_size = hyperfloor(size + 1u) - 1u;
+    auto last_root = std::prev(last);
+    auto bigger = last_root;
+    auto bigger_size = poplar_size;
+
+    // Look for the bigger poplar root
+    auto it = first;
+    while (true) {
+        auto root = std::next(it, poplar_size - 1);
+        if (root == last_root) break;
+        if (*bigger < *root) {
+            bigger = root;
+            bigger_size = poplar_size;
+        }
+        it = std::next(root);
+
+        size -= poplar_size;
+        poplar_size = hyperfloor(size + 1u) - 1u;
+    }
+
+    // Swap & sift if needed
+    if (bigger != last_root) {
+        std::iter_swap(bigger, last_root);
+        sift(bigger - (bigger_size - 1), bigger_size);
+    }
+}
+```
+
+Iterating through the roots runs in O(log n) time, and the *sift* procedure runs in O(log n) time too, which makes
+`pop_heap` run in O(log n) time and O(1) extra space, which means that `sort_heap` runs in O(n log n) time and O(1)
+space overall.
+
+This is pretty much all we need to make poplar sort run in O(n log n) time and O(1) space, yet the most interesting
+part is that we managed to transform the poplar heap into an implicit data structure without worsening the complexity
+of its operations. On the other hand, the version that stores the iterators was consistently faster in my benchmarks,
+so the interest of the O(1) space version is mainly theoretical.
 
 ## Pushing the experiment further
 
