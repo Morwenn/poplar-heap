@@ -465,7 +465,41 @@ this case the first poplar is the only one and covers the whole poplar heap.
 Since there are at most log(n) poplars in a poplar heap, iterating through all of them takes O(log n) time without
 storing more than O(1) information.
 
-TODO: push_heap, pop_heap
+### `push_heap` in O(log n) time and O(1) space
+
+As we have seen with the original algorithm, pushing an element on a poplar heap requires to add that element at the
+end, then to form a new semipoplar and transform it if the previous two poplars have the same size. Since our poplar
+heap is implicit, we actually only have to call *sift* if the size of the last poplar of the new poplar heap is greater
+than 1. We already saw how to find all the poplars of the heap in O(log n), so we only have to to apply that technique
+and call *sift*:
+
+```cpp
+template<typename Iterator>
+void push_heap(Iterator first, Iterator last)
+{
+    // Make sure to use an unsigned integer so that hyperfloor works correctly
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<Iterator>::difference_type
+    >;
+    poplar_size_t size = std::distance(first, last);
+
+    // Find the size of the poplar that will contain the new element in O(log n) time
+    poplar_size_t last_poplar_size = hyperfloor(size + 1u) - 1u;
+    while (size - last_poplar_size != 0) {
+        size -= last_poplar_size;
+        last_poplar_size = hyperfloor(size + 1u) - 1u;
+    }
+
+    // Sift the new element in its poplar in O(log n) time
+    sift(std::prev(last, last_poplar_size), last_poplar_size);
+}
+```
+
+The size of the last poplar of the heap is found in O(log n) time, and *sift* runs in O(log n) time too. This makes the
+`push_heap` procedure run in the expected O(log n) time and O(1) space, which means that we finally have `make_heap` in
+O(n log n) time and O(1) space.
+
+TODO: pop_heap
 
 ## Pushing the experiment further
 
