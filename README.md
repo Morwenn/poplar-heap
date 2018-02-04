@@ -177,7 +177,7 @@ void sift(Iterator first, Size size)
     if (*max_root < *child_root1) {
         max_root = child_root1;
     }
-    if (*max_root, *child_root2) {
+    if (*max_root < *child_root2) {
         max_root = child_root2;
     }
 
@@ -222,7 +222,7 @@ struct poplar
         -> Iterator
     {
         // The root of a poplar is always its last element
-        return std::prev(res);
+        return std::prev(end);
     }
 };
 ```
@@ -256,8 +256,8 @@ void poplar_sort(Iterator first, Iterator last)
             auto end = std::next(it);
             auto poplar_size = 2 * poplars[nb_pops-2].size + 1;
             // Fuse the last two poplars and the new element into a semipoplar
-            poplars.pop();
-            poplars.pop();
+            poplars.pop_back();
+            poplars.pop_back();
             poplars.push_back({begin, end, poplar_size});
             // Turn the new semipoplar into a full-fledged poplar
             sift(begin, poplar_size);
@@ -318,7 +318,7 @@ do {
         // Find bounds of the new poplars
         auto poplar_size = poplars.back().size / 2;
         auto begin1 = poplars.back().begin;
-        auto begin2 = begin1 + size;
+        auto begin2 = begin1 + poplar_size;
         // Split the poplar in two poplars, don't keep the last element
         poplars.pop_back();
         poplars.push_back({begin1, begin2, poplar_size});
@@ -678,7 +678,7 @@ triangles represent 15-element poplars, the circles represent single elements, a
 represent the number of elements to sift after the 15-element poplar above, considering that we sift every time two
 poplars of the same size come before the element to sift. The sequence goes on like this: 0, 1, 0, 2, 0, 1, 0, 3, 0, 1,
 0, 2, 0, 1, 0, 4, 0, 1, etc... There seemed to be some logic that I did not understand, so looked it up on the internet
-and found that it corresponded to the beginning of the *binary carry sequence*, [A007814 in the on-line encyclopedia of
+and found that it corresponds to the beginning of the *binary carry sequence*, [A007814 in the on-line encyclopedia of
 integer sequences](https://oeis.org/A007814). This specific sequence is also described as follows:
 
 > The sequence a(n) given by the exponents of the highest power of 2 dividing n
