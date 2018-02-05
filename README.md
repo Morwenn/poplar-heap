@@ -203,6 +203,9 @@ than O(n log n) time. In both cases, sorting the heap dominates the algorithm an
 original algorithm described by Bron & Hesselink or the revisited algorithm that I will describe later, both are split
 into these two distinct phases.
 
+*Note: I am actually wondering whether one of the `make_heap` functions described here runs in O(n), see the
+[corresponding issue](https://github.com/Morwenn/poplar-heap/issues/1).*
+
 ## Original poplar sort
 
 The original poplar sort algorithm actually stores up to log2(n) integers to represent the positions of the poplars. We
@@ -754,6 +757,9 @@ This new `make_heap` algorithm was actually faster in my benchmarks than repeate
 due to the insertion sort optimization, but also to the fact computing the size of the current "last" poplar is done in
 O(1) and not in O(log n). That said, the complexity is the same: O(n log n) time and O(1) space. We might not have
 found an O(n) algorithm to construct the poplar heap, but this one is definitely interesting.
+
+*Note: I am actually wondering whether this version of `make_heap` runs in O(n), see the [corresponding
+issue](https://github.com/Morwenn/poplar-heap/issues/1).*
 
 ## Additional poplar heap algorithms
 
