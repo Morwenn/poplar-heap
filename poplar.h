@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2017-2018 Morwenn
+ * Copyright (c) 2017-2019 Morwenn
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -117,7 +117,7 @@ namespace poplar
 
                 root = max_root;
                 child_root1 = root - 1;
-                child_root2 = max_root + (size / 2 - size);
+                child_root2 = max_root - (size - size / 2);
             }
         }
 

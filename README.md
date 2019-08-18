@@ -380,7 +380,7 @@ void sift(Iterator first, Size size)
 
         root = max_root;
         child_root1 = root - 1;
-        child_root2 = max_root + (size / 2 - size);
+        child_root2 = max_root - (size - size / 2);
     }
 }
 ```
