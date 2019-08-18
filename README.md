@@ -11,6 +11,15 @@ library does not mean to provide performant algorithms. Its goals are different:
 * Showing that operations used in poplar sort can be decoupled
 * Providing a proof-of-concept implementation
 
+*Note: while I didn't about it when I create that project, what I describe here as a poplar heap has apparently already
+been described as a [post-order heap](https://people.csail.mit.edu/nickh/Publications/PostOrderHeap/FUN_abstract.html)
+by Nicholas J. A. Harvey & Kevin C. Zatloukal. The space & time complexities described in their paper match the ones I
+expect from the final algorithms in this repository, but they still bear a difference: their post-order heap requires
+to store two additional integers to represent the state of the heap, while the algorithms I present here only need to
+know the size of the array used to store the poplar heap. On the other hand, they provide formal proofs to demonstrate
+the complexity of the different operations of a post-order heap while I'm unable to craft such proofs for the poplar
+heap (or in general, I don't know how to write proofs).*
+
 # The heap algorithms
 
 The following functions are provided by the poplar-heap library:
@@ -563,7 +572,7 @@ said about it. This section contains both trivial improvements and other ways to
 of the most interesting things are alas unproven and empirically derived, but I felt like it was worth mentioning them
 anyway.
 
-### Trivially improve `sort_heap`
+### Trivially improving `sort_heap`
 
 In the current state of things `pop_heap` computes the size of the sequence it is applied to every time it is called,
 which is probably suboptimal in `sort_heap` since we know the size to be one less at each iteration. A trivial
@@ -842,5 +851,9 @@ is not the case for this algorithm, so we fall back to using a single element fo
 That's pretty much it for poplar heap: we have seen several ways to implement operations with different size
 complexities depending on the method used. We managed to decouple poplar heap operations and to implement them without
 intermediate state and with O(1) space complexity, actually lowering the space complexity of the poplar sort algorithm
-as described in the original paper by Bron & Hesselink. This makes poplar heap a novel implicit data structure as far
-as I know. If you have any questions or improvements to suggest, don't hesitate to open an issue on the project :)
+as described in the original paper by Bron & Hesselink. Such complexities were already demonstrated for the equivalent
+*post-order heap* by Nicholas J. A. Harvey & Kevin C. Zatloukal, but our implementation of poplar heap further reduces
+the need to store additional information to represent the state of the heap, requiring only the bounds of the region of
+storage where it lives.
+
+If you have any questions, improvements or proofs to suggest, don't hesitate to open an issue on the project :)
