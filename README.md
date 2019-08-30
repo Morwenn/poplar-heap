@@ -12,13 +12,12 @@ library does not mean to provide performant algorithms. Its goals are different:
 * Providing a proof-of-concept implementation
 
 *Note: while I didn't about it when I create that project, what I describe here as a poplar heap has apparently already
-been described as a [post-order heap](https://people.csail.mit.edu/nickh/Publications/PostOrderHeap/FUN_abstract.html)
-by Nicholas J. A. Harvey & Kevin C. Zatloukal. The space & time complexities described in their paper match the ones I
-expect from the final algorithms in this repository, but they still bear a difference: their post-order heap requires
-to store two additional integers to represent the state of the heap, while the algorithms I present here only need to
-know the size of the array used to store the poplar heap. On the other hand, they provide formal proofs to demonstrate
-the complexity of the different operations of a post-order heap while I'm unable to craft such proofs for the poplar
-heap (or in general, I don't know how to write proofs).*
+been described as a [post-order heap][post-order-heap] by Nicholas J. A. Harvey & Kevin C. Zatloukal. The space & time
+complexities described in their paper match the ones I expect from the final algorithms in this repository, but they
+still bear a difference: their post-order heap requires to store two additional integers to represent the state of the
+heap, while the algorithms I present here only need to know the size of the array used to store the poplar heap. On the
+other hand, they provide formal proofs to demonstrate the complexity of the different operations of a post-order heap
+while I'm unable to craft such proofs for the poplar heap (or in general, I don't know how to write proofs).*
 
 # The heap algorithms
 
@@ -72,7 +71,7 @@ requirements.
 
 *Effects:* Constructs a poplar heap out of the range `[first, last)`.
 
-*Complexity:* Theoretically O(`last - first`) comparisons (see issues #1 and #2).
+*Complexity:* Theoretically O(`last - first`) comparisons (see issues [#1][issue1] and [#2][issue2]).
 
 ```cpp
 template<
@@ -213,7 +212,7 @@ original algorithm described by Bron & Hesselink or the revisited algorithm that
 into these two distinct phases.
 
 *Note: I am actually wondering whether one of the `make_heap` functions described here runs in O(n), see the
-[corresponding issue](https://github.com/Morwenn/poplar-heap/issues/1).*
+[corresponding issue][issue1].*
 
 ## Original poplar sort
 
@@ -346,7 +345,7 @@ something wasn't clear, don't hesitate to mention it, open an issue and/or sugge
 
 As I worked on poplar sort to try to make it faster, I noticed a few things and an idea came to my mind: would it be
 possible to make poplar sort run without storing an array of poplars, basically making it run with O(1) extra space and
-thus making it an [implicit data structure](https://en.wikipedia.org/wiki/Implicit_data_structure)?
+thus making it an [implicit data structure][implicit-data-structure]?
 
 Even better: would it be possible to decouple the heap operations in order to reimplement the heap interface in the C++
 standard library? Would it be possible to do so while keeping the current complexity guarantees of poplar sort and use
@@ -673,7 +672,8 @@ void make_heap(Iterator first, Iterator last)
 While I like the straightforward aspect of building the final poplars directly in place, `make_poplar` actually uses
 O(log n) extra space due to the double recursion, and it doesn't have the right properties to be optimized into a
 simple loop. This construction method is unfortunately unsuitable to implement the poplar heap operations with O(1)
-extra space. However, its time complexity is supposed to be O(n) instead of the original O(n log n) (see issue #2).
+extra space. However, its time complexity is supposed to be O(n) instead of the original O(n log n) (see issue
+[#2][issue2]).
 
 ### Binary carry sequences out of the blue
 
@@ -691,7 +691,7 @@ represent the number of elements to sift after the 15-element poplar above, cons
 poplars of the same size come before the element to sift. The sequence goes on like this: 0, 1, 0, 2, 0, 1, 0, 3, 0, 1,
 0, 2, 0, 1, 0, 4, 0, 1, etc... There seemed to be some logic that I did not understand, so looked it up on the internet
 and found that it corresponds to the beginning of the *binary carry sequence*, [A007814 in the on-line encyclopedia of
-integer sequences](https://oeis.org/A007814). This specific sequence is also described as follows:
+integer sequences][OEIS-A007814]. This specific sequence is also described as follows:
 
 > The sequence a(n) given by the exponents of the highest power of 2 dividing n
 
@@ -768,7 +768,7 @@ O(1) and not in O(log n). That said, the complexity is the same: O(n log n) time
 found an O(n) algorithm to construct the poplar heap, but this one is definitely interesting.
 
 *Note: I am actually wondering whether this version of `make_heap` runs in O(n), see the [corresponding
-issue](https://github.com/Morwenn/poplar-heap/issues/1).*
+issue][issue1].*
 
 ## Additional poplar heap algorithms
 
@@ -857,3 +857,10 @@ the need to store additional information to represent the state of the heap, req
 storage where it lives.
 
 If you have any questions, improvements or proofs to suggest, don't hesitate to open an issue on the project :)
+
+
+  [implicit-data-structure]: https://en.wikipedia.org/wiki/Implicit_data_structure
+  [issue1]: https://github.com/Morwenn/poplar-heap/issues/1
+  [issue2]: https://github.com/Morwenn/poplar-heap/issues/2
+  [OEIS-A007814]: https://oeis.org/A007814
+  [post-order-heap]: https://people.csail.mit.edu/nickh/Publications/PostOrderHeap/FUN_abstract.html
