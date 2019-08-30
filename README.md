@@ -72,7 +72,7 @@ requirements.
 
 *Effects:* Constructs a poplar heap out of the range `[first, last)`.
 
-*Complexity:* O(*N* log(*N*)) comparisons, where *N* = `last - first`.
+*Complexity:* Theoretically O(`last - first`) comparisons (see issues #1 and #2).
 
 ```cpp
 template<
@@ -114,7 +114,7 @@ void is_heap_until(RandomAccessIterator first, RandomAccessIterator last,
 *Returns:* If `(last - first) < 2`, returns `last`. Otherwise, returns the last iterator `it` in `[first, last]` for
 which the range `[first, it)` is a poplar heap.
 
-*Complexity:* O(`last - first`).
+*Complexity:* O(`last - first`) comparisons.
 
 # Poplar heap
 
@@ -142,7 +142,7 @@ poplar heaps described in the original paper are worth mentioning:
 * There can't be more than O(log n) poplars in a poplar heap of n elements.
 * Only the last two poplars can have a similar size.
 
-![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
+![Poplar heap containing 12 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
 
 Another interesting property of poplar heaps is that a sorted collection is a valid poplar heap. One of the main ideas
 behind poplar sort was that an almost sorted collection would be faster to sort because constructing the poplar heap
@@ -643,7 +643,7 @@ void make_poplar(Iterator first, Size size)
 ```
 
 The implementation of insertion sort is omitted here because it's irrelevant for the explanation, but you can still
-find it in the source code in the repository. With such an algorithm, `make_heap` becomes an algorithm which iterates
+find it in the source code of this repository. With such an algorithm, `make_heap` becomes an algorithm which iterates
 through the poplars to build them directly:
 
 ```cpp
@@ -673,7 +673,7 @@ void make_heap(Iterator first, Iterator last)
 While I like the straightforward aspect of building the final poplars directly in place, `make_poplar` actually uses
 O(log n) extra space due to the double recursion, and it doesn't have the right properties to be optimized into a
 simple loop. This construction method is unfortunately unsuitable to implement the poplar heap operations with O(1)
-extra space.
+extra space. However, its time complexity is supposed to be O(n) instead of the original O(n log n) (see issue #2).
 
 ### Binary carry sequences out of the blue
 
