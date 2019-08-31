@@ -1,3 +1,5 @@
+[![License](http://img.shields.io/:license-MIT--0-yellow.svg)](https://github.com/aws/mit-0)
+
 poplar-heap is a collection of heap algorithms programmed in C++14 whose signatures more or less conrrespond to those
 of the standard library's heap algorithms. However, they use what is known as a "poplar heap" instead of a traditional
 binary heap to store the data. A poplar heap is a data structure introduced by Coenraad Bron and Wim H. Hesselink in
