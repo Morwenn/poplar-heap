@@ -446,11 +446,12 @@ Taking all of that into account, we can find the first poplar like this:
 
 Once it is found we can find the following poplar, then the following ones by repeatedly applying that operation to the
 rest of the poplar heap. The following function can be used to find the biggest power of two smaller then or equal to a
-given unsigned integer (sometimes known as the *hyperfloor* of the number):
+given unsigned integer (sometimes called the *bit floor* of the number - it available in the standard library since
+C++20 under the name `std::bit_floor`):
 
 ```cpp
 template<typename Unsigned>
-Unsigned hyperfloor(Unsigned n)
+Unsigned bit_floor(Unsigned n)
 {
     constexpr auto bound = std::numeric_limits<Unsigned>::digits / 2;
     for (std::size_t i = 1 ; i <= bound ; i <<= 1) {
@@ -461,16 +462,16 @@ Unsigned hyperfloor(Unsigned n)
 ```
 
 The function above works most of the time but only for unsigned integers. It is worth nothing that it also returns 0
-when given 0 even though it's not a power of 2. Given that function and the size of the poplar heap, the size of the
-first poplar can be found with the following operation:
+when given 0 even though it's not a power of 2, just like its standard library counterpart. Given that function and the
+size of the poplar heap, the size of the first poplar can be found with the following operation:
 
 ```cpp
-auto first_poplar_size = hyperfloor(size + 1u) - 1u;
+auto first_poplar_size = bit_floor(size + 1u) - 1u;
 ```
 
 Interestingly enough, this operation works even when `size` is the biggest representable value of its type: since we
 are only working with unsigned numbers, `size + 1u == 0` in this case since unsigned integers are guaranteed to wrap
-around when overflowing. As we have seen before, our `hyperfloor` implementation returns 0 when given 0, so retrieving
+around when overflowing. As we have seen before, our `bit_floor` implementation returns 0 when given 0, so retrieving
 1 to that result will give back the original value of `size` back wrapping around once again. Fortunately the biggest
 representable value of an unsigned integer type happens to be of the form 2^n-1, which is exactly what we expect. In
 this case the first poplar is the only one and covers the whole poplar heap.
@@ -490,17 +491,17 @@ and call *sift*:
 template<typename Iterator>
 void push_heap(Iterator first, Iterator last)
 {
-    // Make sure to use an unsigned integer so that hyperfloor works correctly
+    // Make sure to use an unsigned integer so that bit_floor works correctly
     using poplar_size_t = std::make_unsigned_t<
         typename std::iterator_traits<Iterator>::difference_type
     >;
     poplar_size_t size = std::distance(first, last);
 
     // Find the size of the poplar that will contain the new element in O(log n) time
-    poplar_size_t last_poplar_size = hyperfloor(size + 1u) - 1u;
+    poplar_size_t last_poplar_size = bit_floor(size + 1u) - 1u;
     while (size - last_poplar_size != 0) {
         size -= last_poplar_size;
-        last_poplar_size = hyperfloor(size + 1u) - 1u;
+        last_poplar_size = bit_floor(size + 1u) - 1u;
     }
 
     // Sift the new element in its poplar in O(log n) time
@@ -515,7 +516,7 @@ O(n log n) time and O(1) space.
 ### `pop_heap` in O(log n) time and O(1) space
 
 `pop_heap` is actually very much like the *relocate* procedure from the original poplar sort algorithm, except that we
-need to iterate the collection via the `hyperfloor` trick instead of using stored iterators. On the other hand, since
+need to iterate the collection via the `bit_floor` trick instead of using stored iterators. On the other hand, since
 we don't store anything, we don't have to reorganize poplars as the original algorithm does: after the biggest root
 switch and the call to *sift* everything is already done.
 
@@ -523,13 +524,13 @@ switch and the call to *sift* everything is already done.
 template<typename Iterator>
 void pop_heap(Iterator first, Iterator last)
 {
-    // Make sure to use an unsigned integer so that hyperfloor works correctly
+    // Make sure to use an unsigned integer so that bit_floor works correctly
     using poplar_size_t = std::make_unsigned_t<
         typename std::iterator_traits<Iterator>::difference_type
     >;
     poplar_size_t size = std::distance(first, last);
 
-    auto poplar_size = hyperfloor(size + 1u) - 1u;
+    auto poplar_size = bit_floor(size + 1u) - 1u;
     auto last_root = std::prev(last);
     auto bigger = last_root;
     auto bigger_size = poplar_size;
@@ -546,7 +547,7 @@ void pop_heap(Iterator first, Iterator last)
         it = std::next(root);
 
         size -= poplar_size;
-        poplar_size = hyperfloor(size + 1u) - 1u;
+        poplar_size = bit_floor(size + 1u) - 1u;
     }
 
     // Swap & sift if needed
@@ -657,7 +658,7 @@ void make_heap(Iterator first, Iterator last)
     poplar_size_t size = std::distance(first, last);
 
     // Build the poplars directly without fusion
-    poplar_size_t poplar_size = hyperfloor(size + 1u) - 1u;
+    poplar_size_t poplar_size = bit_floor(size + 1u) - 1u;
     while (true) {
         // Make a poplar
         make_poplar(first, poplar_size);
@@ -666,7 +667,7 @@ void make_heap(Iterator first, Iterator last)
         // Advance to the next poplar
         first += poplar_size;
         size -= poplar_size;
-        poplar_size = hyperfloor(size + 1u) - 1u;
+        poplar_size = bit_floor(size + 1u) - 1u;
     }
 }
 ```
@@ -771,6 +772,89 @@ found an O(n) algorithm to construct the poplar heap, but this one is definitely
 
 *Note: I am actually wondering whether this version of `make_heap` runs in O(n), see the [corresponding
 issue][issue1].*
+
+### Intrinsics to optimize `bit_floor`
+
+Considering that `make_heap` runs in O(n) time, the function `sort_heap` dominates the complexity when sorting a
+sequence from scratch, so it naturally deserves the most attention when trying to find optimizations. I did not manage
+to find a better algorithm that did not use extra memory for the job, but I was nevertheless able to obtain a 10~65%
+speedup when sorting a collection of integers by optimizing `bit_floor` with compiler intrinsics.
+
+The `bit_floor` implementation shown previously runs in O(log k) time when computing the bit floor of a k-bit unsigned
+integer. Using intrinsices it is possible to compute the bit floor in O(1) by computing the position of the highest set
+bit and shifting a single bit to that position. The algorithm below shows how to compute the bit floor of an unsigned
+integer with GCC and Clang intrinsics:
+
+```cpp
+unsigned bit_floor(unsigned n)
+{
+    constexpr auto k = std::numeric_limits<unsigned>::digits;
+    if (n == 0) return 0;
+    return 1u << (k - 1 - __builtin_clz(n));
+}
+```
+
+There are equivalent `__builtin_clzl` and `__builtin_clzll` intrinsics to handle the `long` and `long long` variations
+of the unsigned integers type; handling even bigger types requires more tricks that aren't showed here but can be found
+in the standard library implementations of the C++20 function `std::countl_zero`.
+
+Unfortunately that implementation is often branchful (recent Clang implementations manage to optimize that branch away
+on specific architectures with specific compiler flags), which is something we would rather avoid in the hot path of
+the algorithm. I tried to come up with various bit tricks to get rid of the branch, but all the results were either
+still branchful, undefined behaviour, or both at once. In the end I decided to introduce a new `unguarded_bit_floor`
+function which does not always perform the check against zero:
+
+```cpp
+template<typename Unsigned>
+constexpr auto unguarded_bit_floor(Unsigned n) noexcept
+    -> Unsigned
+{
+    return bit_floor(n);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+constexpr auto unguarded_bit_floor(unsigned int n) noexcept
+    -> unsigned int
+{
+    constexpr auto k = std::numeric_limits<unsigned>::digits;
+    return 1u << (k - 1 - __builtin_clz(n));
+}
+
+// Overloads for unsigned long and unsigned long long not shown here
+
+#endif
+```
+
+The place where we might call `bit_floor` with `0` in `sort_heap` is when the computed `size` is the biggest
+representable value of its type, which can only ever happen at the very beginning of the sorting phase since we sort
+fewer and fewer elements as the sort goes on. This means that we can call `bit_floor` once at the beginning before any
+element has been sorted, and we can use `unguarded_bit_floor` everywhere else. To accomodate this change we need to
+compute the bit floor in the `sort_heap` loop itself and pass it down to `pop_heap_with_size` explicitly:
+
+```cpp
+template<typename RandomAccessIterator, typename Compare=std::less<>>
+auto sort_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
+    -> void
+{
+    using poplar_size_t = std::make_unsigned_t<
+        typename std::iterator_traits<RandomAccessIterator>::difference_type
+    >;
+    poplar_size_t size = std::distance(first, last);
+    if (size < 2) return;
+
+    auto poplar_size = detail::bit_floor(size + 1u) - 1u;
+    do {
+        detail::pop_heap_with_size(first, last, size, poplar_size, compare);
+        --last;
+        --size;
+        poplar_size = detail::unguarded_bit_floor(size + 1u) - 1u;
+    } while (size > 1);
+}
+```
+
+`pop_heap_with_size` has to be modified accordingly and can afford to only use `unguarded_bit_floor` internally, and
+`pop_heap` also needs to be modified to accomodate the new interface of `pop_heap_with_size`. The function `push_heap`
+can also be changed to use `bit_floor` once then `unguarded_bit_floor` in its inner loop.
 
 ## Additional poplar heap algorithms
 

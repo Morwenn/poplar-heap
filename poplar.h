@@ -1,7 +1,7 @@
 /*
  * The MIT No Attribution License (MIT-0)
  *
- * Copyright (c) 2017-2019 Morwenn
+ * Copyright (c) 2017-2020 Morwenn
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,9 +39,10 @@ namespace poplar
         // Generic helper functions
         ////////////////////////////////////////////////////////////
 
-        // Returns 2^floor(log2(n)), assumes n > 0
+        // Returns 0 if n == 0 else 2^floor(log2(n))
+
         template<typename Unsigned>
-        constexpr auto hyperfloor(Unsigned n)
+        constexpr auto bit_floor(Unsigned n) noexcept
             -> Unsigned
         {
             constexpr auto bound = std::numeric_limits<Unsigned>::digits / 2;
@@ -50,6 +51,42 @@ namespace poplar
             }
             return n & ~(n >> 1);
         }
+
+        // Returns 2^floor(log2(n)), assumes n > 0
+
+        template<typename Unsigned>
+        constexpr auto unguarded_bit_floor(Unsigned n) noexcept
+            -> Unsigned
+        {
+            return bit_floor(n);
+        }
+
+#if defined(__GNUC__) || defined(__clang__)
+        constexpr auto unguarded_bit_floor(unsigned int n) noexcept
+            -> unsigned int
+        {
+            constexpr auto k = std::numeric_limits<unsigned>::digits;
+            return 1u << (k - 1 - __builtin_clz(n));
+        }
+
+        constexpr auto unguarded_bit_floor(unsigned long n) noexcept
+            -> unsigned long
+        {
+            constexpr auto k = std::numeric_limits<unsigned long>::digits;
+            return 1ul << (k - 1 - __builtin_clzl(n));
+        }
+
+        constexpr auto unguarded_bit_floor(unsigned long long n) noexcept
+            -> unsigned long long
+        {
+            constexpr auto k = std::numeric_limits<unsigned long long>::digits;
+            return 1ull << (k - 1 - __builtin_clzll(n));
+        }
+#endif
+
+        ////////////////////////////////////////////////////////////
+        // Insertion sorts
+        ////////////////////////////////////////////////////////////
 
         // Insertion sort which doesn't check for empty sequences
         template<typename BidirectionalIterator, typename Compare>
@@ -120,10 +157,9 @@ namespace poplar
 
         template<typename RandomAccessIterator, typename Size, typename Compare>
         auto pop_heap_with_size(RandomAccessIterator first, RandomAccessIterator last,
-                                Size size, Compare compare)
+                                Size size, Size poplar_size, Compare compare)
             -> void
         {
-            auto poplar_size = detail::hyperfloor(size + 1u) - 1u;
             auto last_root = std::prev(last);
             auto bigger = last_root;
             auto bigger_size = poplar_size;
@@ -140,7 +176,7 @@ namespace poplar
                 it = std::next(root);
 
                 size -= poplar_size;
-                poplar_size = hyperfloor(size + 1u) - 1u;
+                poplar_size = unguarded_bit_floor(size + 1u) - 1u;
             }
 
             // If a poplar root was bigger than the last one, exchange
@@ -166,10 +202,10 @@ namespace poplar
         poplar_size_t size = std::distance(first, last);
 
         // Find the size of the poplar that will contain the new element in O(log n)
-        poplar_size_t last_poplar_size = detail::hyperfloor(size + 1u) - 1u;
+        poplar_size_t last_poplar_size = detail::bit_floor(size + 1u) - 1u;
         while (size - last_poplar_size != 0) {
             size -= last_poplar_size;
-            last_poplar_size = detail::hyperfloor(size + 1u) - 1u;
+            last_poplar_size = detail::unguarded_bit_floor(size + 1u) - 1u;
         }
 
         // Sift the new element in its poplar in O(log n)
@@ -184,8 +220,9 @@ namespace poplar
             typename std::iterator_traits<RandomAccessIterator>::difference_type
         >;
         poplar_size_t size = std::distance(first, last);
+        auto poplar_size = detail::bit_floor(size + 1u) - 1u;
         detail::pop_heap_with_size(std::move(first), std::move(last),
-                                   size, std::move(compare));
+                                   size, poplar_size, std::move(compare));
     }
 
     template<typename RandomAccessIterator, typename Compare=std::less<>>
@@ -251,10 +288,12 @@ namespace poplar
         poplar_size_t size = std::distance(first, last);
         if (size < 2) return;
 
+        auto poplar_size = detail::bit_floor(size + 1u) - 1u;
         do {
-            detail::pop_heap_with_size(first, last, size, compare);
+            detail::pop_heap_with_size(first, last, size, poplar_size, compare);
             --last;
             --size;
+            poplar_size = detail::unguarded_bit_floor(size + 1u) - 1u;
         } while (size > 1);
     }
 
