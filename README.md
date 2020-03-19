@@ -153,9 +153,9 @@ later that this property can actually be used to perform a few optimizations.
 ### Semipoplars
 
 To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of semipoplar: a semipoplar has
-the same properties as a poplar except that the root can be smaller than be smaller than the roots of the subtrees. A
-semipoplar is mostly useful to represent an intermediate case where we are building a bigger poplar from two subpoplars
-and a root. Here is an example of a semipoplar:
+the same properties as a poplar except that its root can be smaller than the roots of its subtrees. A semipoplar is
+mostly useful to represent an intermediate case where we are building a bigger poplar from two subpoplars and a root.
+Here is an example of a semipoplar:
 
 ![Semipoplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
 
@@ -357,10 +357,10 @@ I think I eventually managed to do just that as we will see in this section.
 
 ### `sift` with O(1) space
 
-First thing first: the procedure *sift* currently runs in O(log n): it can recursively call itself up to log(n) times
-before the semipoplar has been transformed into a poplar. On the other hand, calling itself is only done once as the
-last operation of the procude, which basically makes *sift* a tail recursive function. The compiler might transform
-that into a loop, but we can also do that ourselves just in case:
+The procedure *sift* currently runs in O(log n) space: it can recursively call itself up to log(n) times before the
+semipoplar has been turned into a poplar, and every recursion makes the stack grow. On the other hand the recursive
+call only happens once as the last operation of the procedure, which basically makes *sift* a tail recursive function.
+The compiler might transform that into a loop, but we can also do that ourselves just to be extra sure:
 
 ```cpp
 template<typename Iterator, typename Size>
