@@ -97,7 +97,7 @@ template<
     typename RandomAccessIterator,
     typename Compare = std::less<>
 >
-void is_heap(RandomAccessIterator first, RandomAccessIterator last,
+bool is_heap(RandomAccessIterator first, RandomAccessIterator last,
              Compare compare={});
 ```
 
@@ -108,8 +108,8 @@ template<
     typename RandomAccessIterator,
     typename Compare = std::less<>
 >
-void is_heap_until(RandomAccessIterator first, RandomAccessIterator last,
-                   Compare compare={});
+RandomAccessIterator is_heap_until(RandomAccessIterator first, RandomAccessIterator last,
+                                   Compare compare={});
 ```
 
 *Returns:* If `(last - first) < 2`, returns `last`. Otherwise, returns the last iterator `it` in `[first, last]` for
