@@ -218,9 +218,9 @@ into these two distinct phases.
 
 ## Original poplar sort
 
-The original poplar sort algorithm actually stores up to log2(n) integers to represent the positions of the poplars. We
-will use (and store) the following small structure instead to represent a poplar in order to simplify the understanding
-of the algorithm while preserving the original logic as well as the original space and time complexities:
+The original poplar sort algorithm actually stores up to ⌊log2(n + 1)⌋ + 1 integers to represent the positions of the
+poplars. We will use (and store) the following small structure instead to represent a poplar in order to simplify the
+understanding of the algorithm while preserving the original logic as well as the original space and time complexities:
 
 ```cpp
 template<typename Iterator>
