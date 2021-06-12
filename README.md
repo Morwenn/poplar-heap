@@ -832,19 +832,19 @@ element has been sorted, and we can use `unguarded_bit_floor` everywhere else. T
 compute the bit floor in the `sort_heap` loop itself and pass it down to `pop_heap_with_size` explicitly:
 
 ```cpp
-template<typename RandomAccessIterator, typename Compare=std::less<>>
-auto sort_heap(RandomAccessIterator first, RandomAccessIterator last, Compare compare={})
+template<typename Iterator>
+auto sort_heap(Iterator first, Iterator last)
     -> void
 {
     using poplar_size_t = std::make_unsigned_t<
-        typename std::iterator_traits<RandomAccessIterator>::difference_type
+        typename std::iterator_traits<Iterator>::difference_type
     >;
     poplar_size_t size = std::distance(first, last);
     if (size < 2) return;
 
     auto poplar_size = detail::bit_floor(size + 1u) - 1u;
     do {
-        detail::pop_heap_with_size(first, last, size, poplar_size, compare);
+        detail::pop_heap_with_size(first, last, size, poplar_size);
         --last;
         --size;
         poplar_size = detail::unguarded_bit_floor(size + 1u) - 1u;
