@@ -13,17 +13,18 @@ library does not mean to provide performant algorithms. Its goals are different:
 * Showing that operations used in poplar sort can be decoupled
 * Providing a proof-of-concept implementation
 
-*Note: while I didn't about it when I create that project, what I describe here as a poplar heap has apparently already
-been described as a [post-order heap][post-order-heap] by Nicholas J. A. Harvey & Kevin C. Zatloukal. The space & time
-complexities described in their paper match the ones I expect from the final algorithms in this repository, but they
-still bear a difference: their post-order heap requires to store two additional integers to represent the state of the
-heap, while the algorithms I present here only need to know the size of the array used to store the poplar heap. On the
-other hand, they provide formal proofs to demonstrate the complexity of the different operations of a post-order heap
-while I'm unable to craft such proofs for the poplar heap (or in general, I don't know how to write proofs).*
+*Note: while I didn't know about it when I created this project, what I describe here as a poplar heap has apparently
+already been described as a [post-order heap][post-order-heap] by Nicholas J. A. Harvey & Kevin C. Zatloukal. The space
+and time complexities described in their paper match those of poplar heap (at least theoretically, I did not formally
+prove the complexities of the different poplar heap algorithms), but there is still a difference between the two data
+structures: their post-order heap requires the storage of two additional integers to represent the state of the heap,
+while the algorithms I present here only need to know the size of the array used to store the poplar heap. On the other
+hand, they provide formal proofs to demonstrate the complexities of the different operations of a post-order heap while
+I was unable to come up with such formal proofs for the poplar heap (formal proofs are unfortunately not my domain).*
 
 # The heap algorithms
 
-The following functions are provided by the poplar-heap library:
+The poplar-heap library provides the following function templates:
 
 ```cpp
 template<
@@ -131,7 +132,7 @@ empty sections) followed by the root.
 
 Because of its specific structure, we can already intuitively note that the size of a poplar is always a power of two
 minus one. This property is extensively used in the algorithm. The following graph represents a poplar containing seven
-elements, and shows how it is mapped to an array:
+elements, and shows how they are mapped to the backing array:
 
 ![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar.png)
 
@@ -140,21 +141,22 @@ and the smaller poplars come last. Moreover, the poplars should be as big as the
 heap contains 12 elements, it will be made of 4 poplars with respectively 7, 3, 1 and 1 elements. Two properties of
 poplar heaps described in the original paper are worth mentioning:
 
-* There can't be more than O(log n) poplars in a poplar heap of n elements.
-* Only the last two poplars can have a similar size.
+* There can't be more than O(log n) poplars in a poplar heap of n elements (Harvey & Zatloukal give an upper bound of
+  at most ⌊log2(n + 1)⌋ + 1 poplars).
+* Only the two rightmost poplars - the smallest ones - can have the same number of elements.
 
 ![Poplar heap containing 12 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
 
 Another interesting property of poplar heaps is that a sorted collection is a valid poplar heap. One of the main ideas
 behind poplar sort was that an almost sorted collection would be faster to sort because constructing the poplar heap
 wouldn't move many elements around, while a regular heapsort can't take advantage of presortedness at all. We will see
-later that this property can actually be used to perform a few optimizations.
+later that this property can actually be used to perform additional optimizations.
 
 ### Semipoplars
 
 To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of semipoplar: a semipoplar has
-the same properties as a poplar except that its root can be smaller than the roots of its subtrees. A semipoplar is
-mostly useful to represent an intermediate case where we are building a bigger poplar from two subpoplars and a root.
+the same properties as a poplar except that its root can be smaller than the roots of its subpoplars. A semipoplar is
+mostly useful to represent an intermediate case when we are building a bigger poplar from two subpoplars and a root.
 Here is an example of a semipoplar:
 
 ![Semipoplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
@@ -191,9 +193,8 @@ void sift(Iterator first, Size size)
         max_root = child_root2;
     }
 
-    // If one of the roots of the subpoplars was the biggest of all, swap it
-    // with the root of the semipoplar, and recursively call sift of this
-    // subpoplar
+    // If one of the roots of the subpoplars is bigger than that of the
+    // semipoplar, swap them and recursively call sift on this subpoplar
     if (max_root != root) {
         std::iter_swap(root, max_root);
         sift(max_root - (size / 2 - 1), size / 2);
@@ -203,18 +204,18 @@ void sift(Iterator first, Size size)
 
 # Poplar sort
 
-As most heapsort-like algorithms, poplar is divided into two main parts:
+As most heapsort-like algorithms, poplar sort is divided into two main parts:
 
 * Turning the passed collection into a poplar heap
 * Sorting the poplar heap
 
-While making a binary heap can be made in O(n) time, I don't know of any way to make a poplar heap with anything better
-than O(n log n) time. In both cases, sorting the heap dominates the algorithm and runs in O(n log n) time. Be it the
-original algorithm described by Bron & Hesselink or the revisited algorithm that I will describe later, both are split
-into these two distinct phases.
+Be it the original poplar sort described by Bron & Hesselink or the revisited algorithm that I will describe later,
+both are split into these two distinct phases. It should be possible to construct a poplar heap in O(n) time, but I
+lack the knowledge required to prove it, so the instinctive analysis in the sections to come only try to demonstrate
+a O(n log n) worst case for `poplar::make_heap`.
 
-*Note: I am actually wondering whether one of the `make_heap` functions described here runs in O(n), see the
-[corresponding issue][issue1].*
+*Note: if you're better than I am at formal proofs, you can visit [this issue][issue1] which dicusses whether
+`make_heap` actually has a O(n) worst case.*
 
 ## Original poplar sort
 
@@ -241,8 +242,8 @@ struct poplar
 ```
 
 With that structure we can easily make an array of poplars to represent the poplar heap. Storing both the beginning,
-end and size of a poplar is a bit redundant, but in my benchmarks it was what ended being the fastest at the end of the
-day: apparently computing them again and again wasn't the best solution.
+end and size of a poplar is a bit redundant, but it proved to be the fastest in my benchmarks: computing them over and
+over again apparently wasn't the best solution.
 
 The poplar heap is constructed iteratively: elements are added to the poplar heap one at a time. Whenever such an
 element is added, it is first added as a single-element poplar at the end of the heap. Then, if the previous two
@@ -287,13 +288,14 @@ void poplar_sort(Iterator first, Iterator last)
 Now that we have our poplar heap, it's time to sort it. Just like a regular heapsort it's done by popping elements from
 the poplar heap one by one. Popping an element works as follows:
 
-* Switch the biggest of the poplar roots with the root of the last poplar
+* Find the poplar with the biggest root
+* Switch it with the root of the last poplar
 * Apply the *sift* procedure to the poplar whose root has been taken to restore the poplar invariants
 * Remove the last element from the heap
 * If that element formed a single-element poplar, we are done
 * Otherwise split the rest of the last poplar into two poplars of equal size
 
-The first two steps are known as the *relocate* procedure in the original paper, which can be roughly implemented as
+The first three steps are known as the *relocate* procedure in the original paper, which can be roughly implemented as
 follows:
 
 ```cpp
@@ -340,27 +342,28 @@ do {
 } while (not poplars.empty());
 ```
 
-And that's pretty much it for the original poplar sort; I hope that it my explanation was understandable enough. If
+And that's pretty much it for the original poplar sort. I hope that my explanation was understandable enough. If
 something wasn't clear, don't hesitate to mention it, open an issue and/or suggest improvements to the wording.
 
 ## Poplar sort revisited: heap operations with O(1) extra space
 
 As I worked on poplar sort to try to make it faster, I noticed a few things and an idea came to my mind: would it be
 possible to make poplar sort run without storing an array of poplars, basically making it run with O(1) extra space and
-thus making it an [implicit data structure][implicit-data-structure]?
+thus turning the poplar heap into an [implicit data structure][implicit-data-structure]?
 
 Even better: would it be possible to decouple the heap operations in order to reimplement the heap interface in the C++
 standard library? Would it be possible to do so while keeping the current complexity guarantees of poplar sort and use
 O(1) space for every operation?
 
-I think I eventually managed to do just that as we will see in this section.
+It turned out to be possible, as we will see in this section.
 
 ### `sift` with O(1) space
 
 The procedure *sift* currently runs in O(log n) space: it can recursively call itself up to log(n) times before the
 semipoplar has been turned into a poplar, and every recursion makes the stack grow. On the other hand the recursive
-call only happens once as the last operation of the procedure, which basically makes *sift* a tail recursive function.
-The compiler might transform that into a loop, but we can also do that ourselves just to be extra sure:
+call only happens once as the last operation of the procedure, which basically makes *sift* a [tail recursive
+function][tail-call]. An optimizing compiler might transform that into a loop, but we can also do that ourselves just
+to be extra sure:
 
 ```cpp
 template<typename Iterator, typename Size>
@@ -425,15 +428,15 @@ void sort_heap(Iterator first, Iterator last)
 }
 ```
 
-If we manage to implement both `push_heap` and `pop_heap` to run in O(log n) time with O(1) space, it is easy to see
-that both `make_heap` and `sort_heap` will run in O(n log n) time with O(1) space, making the whole poplar sort
-algorithm run with the same time and space complexities.
+If we manage to implement both `push_heap` and `pop_heap` to run in O(log n) time with O(1) space, then `make_heap` and
+and `sort_heap` will both run in O(n log n) time and O(1) space, making the whole poplar sort algorithm run with the
+same time and space complexities.
 
 ### Finding the poplars in O(log n) time
 
-Both `push_heap` and `pop_heap` require one to know where the main poplars forming the poplar heap are located. The
-original poplar sort algorithm stored the positions of the poplars for that exact reason. In order to achieve that
-without storing anything, we can go back to the original properties of a poplar heap:
+Both `push_heap` and `pop_heap` require knowledge of the location of the main poplars forming the poplar heap. The
+original poplar sort algorithm stores the positions of the poplars for that exact reason. In order to achieve that
+without storing anything, we need to go back to the original properties of a poplar heap:
 
 * The size of a poplar is always of the form 2^n-1
 * The poplars are stored from the bigger to the smaller
@@ -442,12 +445,12 @@ without storing anything, we can go back to the original properties of a poplar 
 Taking all of that into account, we can find the first poplar like this:
 
 * It begins at the beginning of the poplar heap
-* Its size is the biggest number of the form 2^n-1 which is smaller or equal to the size
+* Its size is the biggest number of the form 2^n-1 which is smaller or equal to the size of the poplar heap
 
-Once it is found we can find the following poplar, then the following ones by repeatedly applying that operation to the
-rest of the poplar heap. The following function can be used to find the biggest power of two smaller then or equal to a
-given unsigned integer (sometimes called the *bit floor* of the number - it available in the standard library since
-C++20 under the name `std::bit_floor`):
+Once we have our first poplar, we can find the next poplar, then the ones after it by repeatedly applying that same
+operation to the rest of the poplar heap. The following function can be used to find the biggest power of two smaller
+than or equal to a given unsigned integer (sometimes called the *bit floor* of the number - it available in the
+standard library since C++20 under the name [`std::bit_floor`][std-bit-floor]):
 
 ```cpp
 template<typename Unsigned>
@@ -469,23 +472,23 @@ size of the poplar heap, the size of the first poplar can be found with the foll
 auto first_poplar_size = bit_floor(size + 1u) - 1u;
 ```
 
-Interestingly enough, this operation works even when `size` is the biggest representable value of its type: since we
-are only working with unsigned numbers, `size + 1u == 0` in this case since unsigned integers are guaranteed to wrap
+Interestingly enough, that operation works even when `size` is the biggest representable value of its type: since we
+are only working with unsigned integers, `size + 1u == 0` in this case since unsigned integers are guaranteed to wrap
 around when overflowing. As we have seen before, our `bit_floor` implementation returns 0 when given 0, so retrieving
 1 to that result will give back the original value of `size` back wrapping around once again. Fortunately the biggest
 representable value of an unsigned integer type happens to be of the form 2^n-1, which is exactly what we expect. In
-this case the first poplar is the only one and covers the whole poplar heap.
+such a case there is a single poplar covering the whole poplar heap.
 
-Since there are at most log(n) poplars in a poplar heap, iterating through all of them takes O(log n) time without
-storing more than O(1) information.
+There are at most O(log n) poplars in a poplar heap, so iterating through all of them takes O(log n) time and O(1)
+space.
 
 ### `push_heap` in O(log n) time and O(1) space
 
 As we have seen with the original algorithm, pushing an element on a poplar heap requires to add that element at the
 end, then to form a new semipoplar and transform it if the previous two poplars have the same size. Since our poplar
-heap is implicit, we actually only have to call *sift* if the size of the last poplar of the new poplar heap is greater
-than 1. We already saw how to find all the poplars of the heap in O(log n), so we only have to to apply that technique
-and call *sift*:
+heap is implicit, all we actually have to do is to call *sift* if the size of the last poplar of the new poplar heap
+is greater than 1. We can use the technique described in the previous section to find the size of the last poplar in
+O(log n) time.
 
 ```cpp
 template<typename Iterator>
@@ -510,15 +513,15 @@ void push_heap(Iterator first, Iterator last)
 ```
 
 The size of the last poplar of the heap is found in O(log n) time, and *sift* runs in O(log n) time too. This makes the
-`push_heap` procedure run in the expected O(log n) time and O(1) space, which means that we finally have `make_heap` in
-O(n log n) time and O(1) space.
+`push_heap` procedure run in the expected O(log n) time and O(1) space, which means that we finally have a `make_heap`
+implementation that runs in O(n log n) time and O(1) space.
 
 ### `pop_heap` in O(log n) time and O(1) space
 
 `pop_heap` is actually very much like the *relocate* procedure from the original poplar sort algorithm, except that we
 need to iterate the collection via the `bit_floor` trick instead of using stored iterators. On the other hand, since
-we don't store anything, we don't have to reorganize poplars as the original algorithm does: after the biggest root
-switch and the call to *sift* everything is already done.
+we don't store anything, we don't have to reorganize poplars as the original algorithm does: finding biggest root the
+heap, switching it with that of the last poplar, and calling *sift* on the resulting semipoplar is enough.
 
 ```cpp
 template<typename Iterator>
@@ -570,14 +573,14 @@ so the interest of the O(1) space version is mainly theoretical.
 ## Pushing the experiment further
 
 We have already reached our goal of making the poplar heap an implicit data structure, but there is still more to be
-said about it. This section contains both trivial improvements and other ways to think about some heap operations. Some
-of the most interesting things are alas unproven and empirically derived, but I felt like it was worth mentioning them
-anyway.
+said about it. This section contains both trivial improvements and more involved tricks to rewrite the heap operations.
+Some of the most interesting parts are alas unproven and empirically derived, but they consistently passed all of my
+tests and are worth mentioning anyway.
 
 ### Trivially improving `sort_heap`
 
 In the current state of things `pop_heap` computes the size of the sequence it is applied to every time it is called,
-which is probably suboptimal in `sort_heap` since we know the size to be one less at each iteration. A trivial
+which is kind of suboptimal in `sort_heap` since we know the size to be one less at each iteration. A trivial
 improvement is to pass it down from `sort_heap` instead of recomputing it every time:
 
 ```cpp
@@ -625,9 +628,9 @@ void make_poplar(Iterator first, Size size)
 }
 ```
 
-Such an algorithm makes it easy to reuse one of the properties of the poplars: a sorted collection is a valid poplar.
-It turns out that for small poplars, running a straight insertion sort is often faster in practice than recursively
-calling `make_poplar` until we reach the level of single-element poplars:
+Such an algorithm makes it easy to reuse one of the properties of poplars: a sorted collection is a valid poplar. It
+turns out that, for small poplars, running a straight insertion sort is often faster in practice than recursively
+calling `make_poplar` until the level of single-element poplars:
 
 ```cpp
 template<typename Iterator, typename Size>
@@ -673,10 +676,11 @@ void make_heap(Iterator first, Iterator last)
 ```
 
 While I like the straightforward aspect of building the final poplars directly in place, `make_poplar` actually uses
-O(log n) extra space due to the double recursion, and it doesn't have the right properties to be optimized into a
-simple loop. This construction method is unfortunately unsuitable to implement the poplar heap operations with O(1)
-extra space. However, its time complexity is supposed to be O(n) instead of the original O(n log n) (see issue
-[#2][issue2]).
+O(log n) extra space due to the double recursion, and can't be turned into a simple loop. This construction method is
+unfortunately unsuitable to implement the poplar heap operations with O(1) extra space. However, its time complexity is
+supposed to be O(n) instead of the original O(n log n) (see issue [#2][issue2]).
+
+Another interesting property of this construction method is that it can easily be parallelized.
 
 ### Binary carry sequences out of the blue
 
@@ -691,27 +695,28 @@ need to sift between each 15-element poplar?":
 In the diagram above, you can find the global structure of the poplar heap as seen previously, but with a twist: the
 triangles represent 15-element poplars, the circles represent single elements, and the numbers below the triangles
 represent the number of elements to sift after the 15-element poplar above, considering that we sift every time two
-poplars of the same size come before the element to sift. The sequence goes on like this: 0, 1, 0, 2, 0, 1, 0, 3, 0, 1,
-0, 2, 0, 1, 0, 4, 0, 1, etc... There seemed to be some logic that I did not understand, so looked it up on the internet
-and found that it corresponds to the beginning of the *binary carry sequence*, [A007814 in the on-line encyclopedia of
+poplars of the same size preceed the element to sift. The sequence goes on like this: 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0,
+2, 0, 1, 0, 4, 0, 1, etc. There seemed to be some logic that I did not understand, so looked it up on the internet and
+found that it corresponds to the beginning of the *binary carry sequence*, [A007814 in the on-line encyclopedia of
 integer sequences][OEIS-A007814]. This specific sequence is also described as follows:
 
 > The sequence a(n) given by the exponents of the highest power of 2 dividing n
 
-Following some empirical intuition, I designed a `make_heap` algorithm as follows:
+Following some empirical intuition, I designed a new `make_heap` algorithm as follows:
 
 * Initialize a counter *poplar_level* with 1
 * As long as the poplar heap isn't fully constructed, perform the following steps:
   * Use insertion sort on the next 15 elements to make a poplar
   * Perform the following operations log2(*poplar_level*) times:
-    * Find a poplar whose root is the next element and whose size is twice the size of the previous poplar plus one
-    * Sift the next element in the newly found poplar
-  * If there are fewer than 15 elements left in the collection, sort them with insertion sort
+    * Consider the next element to be the root of a semipoplar whose size is twice the size of the previous poplar plus one
+    * Sift the root to turn the semipoplar into a poplar
+  * If there are fewer than 15 elements left in the collection, sort them with insertion sort and finish
+  * Otherwise increment *poplar_level*
 
 I have no actual proof that the algorithm works and it doesn't feel super intuitive either, but I never managed to find
-a sequence of elements that would make it fail up to this day. Here is the C++ implementation of the algorithm
-described above, using some bit tricks in the increment of the inner loop to avoid having to actually compute a log2
-for every 15 elements:
+a sequence of elements that would make it fail up to this day. Here is the C++ implementation of that new `make_heap`,
+using some bit tricks in the increment of the inner loop to avoid having to actually compute log2(*poplar_level*) the
+expensive way:
 
 ```cpp
 template<typename Iterator>
@@ -766,23 +771,24 @@ insertion sort optimization. The similarity between the original poplar heap gra
 already hinted at this result, which is most likely due to the recursive nature of the poplar structure.
 
 This new `make_heap` algorithm was actually faster in my benchmarks than repeatedly calling `push_heap`, which might be
-due to the insertion sort optimization, but also to the fact computing the size of the current "last" poplar is done in
-O(1) and not in O(log n). That said, the complexity is the same: O(n log n) time and O(1) space. We might not have
-found an O(n) algorithm to construct the poplar heap, but this one is definitely interesting.
+due to the insertion sort optimization, but also to the fact that computing the size of the current "last" poplar is
+done in O(1) time instead of O(log n) time.
 
-*Note: I am actually wondering whether this version of `make_heap` runs in O(n), see the [corresponding
-issue][issue1].*
+Ignoring the insertion sort optimization, this algorithm seems to perform O(log n) operations for each element, which
+gives an obvious upper bound of O(n log n) time and O(1) space for the whole algorithm. I could not formally prove it,
+but some similarities with binary heap construction make me feel this algorithm actually runs in O(n) time - see the
+[corresponding issue][issue1] for additional information.
 
 ### Intrinsics to optimize `bit_floor`
 
-Considering that `make_heap` runs in O(n) time, the function `sort_heap` dominates the complexity when sorting a
-sequence from scratch, so it naturally deserves the most attention when trying to find optimizations. I did not manage
-to find a better algorithm that did not use extra memory for the job, but I was nevertheless able to obtain a 10~65%
-speedup when sorting a collection of integers by optimizing `bit_floor` with compiler intrinsics.
+`make_heap` probably runs in O(n) time, which means that `sort_heap` dominates the complexity when sorting a sequence
+from scratch, so it naturally deserves the most attention when trying to find optimizations. I did not manage to find
+a better algorithm without using extra memory for the job, but I was nevertheless able to obtain a 10~65% speedup when
+sorting a collection of integers by optimizing `bit_floor` with compiler intrinsics.
 
 The `bit_floor` implementation shown previously runs in O(log k) time when computing the bit floor of a k-bit unsigned
-integer. Using intrinsices it is possible to compute the bit floor in O(1) by computing the position of the highest set
-bit and shifting a single bit to that position. The algorithm below shows how to compute the bit floor of an unsigned
+integer. Intrinsics make it possible to compute the bit floor in O(1) by computing the position of the highest set bit
+and shifting a single bit to that position. The algorithm below shows how to compute the bit floor of an unsigned
 integer with GCC and Clang intrinsics:
 
 ```cpp
@@ -794,13 +800,13 @@ unsigned bit_floor(unsigned n)
 }
 ```
 
-There are equivalent `__builtin_clzl` and `__builtin_clzll` intrinsics to handle the `long` and `long long` variations
-of the unsigned integers type; handling even bigger types requires more tricks that aren't showed here but can be found
-in the standard library implementations of the C++20 function `std::countl_zero`.
+There are equivalent `__builtin_clzl` and `__builtin_clzll` intrinsics to handle the `long` and `long long` unsigned
+integer types; handling even bigger types requires more tricks that aren't showed here but can be found in standard
+library implementations of the C++20 function [`std::countl_zero`][std-countl-zero].
 
-Unfortunately that implementation is often branchful (recent Clang implementations manage to optimize that branch away
-on specific architectures with specific compiler flags), which is something we would rather avoid in the hot path of
-the algorithm. I tried to come up with various bit tricks to get rid of the branch, but all the results were either
+Unfortunately the implementation above is often branchful (recent Clang implementations manage to optimize that branch
+away on specific architectures with specific compiler flags), which is something we would rather avoid in the hot path
+of the algorithm. I tried to come up with various bit tricks to get rid of the branch, but all the results were either
 still branchful, undefined behaviour, or both at once. In the end I decided to introduce a new `unguarded_bit_floor`
 function which does not always perform the check against zero:
 
@@ -825,11 +831,11 @@ constexpr auto unguarded_bit_floor(unsigned int n) noexcept
 #endif
 ```
 
-The place where we might call `bit_floor` with `0` in `sort_heap` is when the computed `size` is the biggest
+The only place where we might call `bit_floor` with `0` in `sort_heap` is when the computed `size` is the biggest
 representable value of its type, which can only ever happen at the very beginning of the sorting phase since we sort
 fewer and fewer elements as the sort goes on. This means that we can call `bit_floor` once at the beginning before any
-element has been sorted, and we can use `unguarded_bit_floor` everywhere else. To accomodate this change we need to
-compute the bit floor in the `sort_heap` loop itself and pass it down to `pop_heap_with_size` explicitly:
+element has been sorted, and use `unguarded_bit_floor` everywhere else. To accomodate this change we need to compute
+the bit floor in the `sort_heap` loop itself and pass it down to `pop_heap_with_size` explicitly:
 
 ```cpp
 template<typename Iterator>
@@ -864,8 +870,8 @@ check whether a collection is already a heap:
 * `std::is_heap` checks whether the passed collection is a heap
 * `std::is_heap_until` returns the iterator `it` from the passed collection such as `[first, it)` is a heap
 
-The function `is_heap` can generally be implemented by checking whether `is_heap_until` returns `last`, and this is no
-different for a poplar heap:
+The function [`std::is_heap`][std-is-heap] can generally be implemented by checking whether [`std::is_heap_until`][std-is-heap-until]
+returns `last`. The same logic works with a poplar heap:
 
 ```cpp
 template<typename Iterator>
@@ -876,7 +882,7 @@ bool is_heap(Iterator first, Iterator last)
 ```
 
 The function `is_heap_until` can implemented by checking for every element whether it is bigger than the roots of both
-of its subpoplar when said element has subpoplars. By checking it from first to last element we ensure that the any
+of its subpoplars when said element has subpoplars. By checking it from first to last element we ensure that the any
 element prior the current one is already part of a poplar heap, so we only need to check one level each time instead of
 recursively checking every time that the poplar property holds for every level of a poplar. This makes for a sweet O(n)
 algorithm that can be made to use only O(1) space by adapting the previous `make_heap` algorithm:
@@ -930,7 +936,7 @@ Iterator is_heap_until(Iterator first, Iterator last)
 ```
 
 In `make_heap` we could iterate over elements 15 by 15 because we had an optimization to handle 15 values at once. This
-is not the case for this algorithm, so we fall back to using a single element for `poplar_size`.
+is not the case for this algorithm, so we fall back to using a single element at a time for `poplar_size`.
 
 # Conclusion
 
@@ -950,3 +956,8 @@ If you have any questions, improvements or proofs to suggest, don't hesitate to 
   [issue2]: https://github.com/Morwenn/poplar-heap/issues/2
   [OEIS-A007814]: https://oeis.org/A007814
   [post-order-heap]: https://people.csail.mit.edu/nickh/Publications/PostOrderHeap/FUN_abstract.html
+  [std-bit-floor]: https://en.cppreference.com/w/cpp/numeric/bit_floor
+  [std-countl-zero]: https://en.cppreference.com/w/cpp/numeric/countl_zero
+  [std-is-heap]: https://en.cppreference.com/w/cpp/algorithm/is_heap
+  [std-is-heap-until]: https://en.cppreference.com/w/cpp/algorithm/is_heap_until
+  [tail-call]: https://en.wikipedia.org/wiki/Tail_call
