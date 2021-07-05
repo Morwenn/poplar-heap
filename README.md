@@ -134,7 +134,7 @@ Because of its specific structure, we can already intuitively note that the size
 minus one. This property is extensively used in the algorithm. The following graph represents a poplar containing seven
 elements, and shows how they are mapped to the backing array:
 
-![Poplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar.png)
+![Poplar containing 7 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/poplar.png)
 
 Now, let us define a "poplar heap" to be a forest of poplars organized in such a way that the bigger poplars come first
 and the smaller poplars come last. Moreover, the poplars should be as big as they possibly can. For example if a poplar
@@ -145,7 +145,7 @@ poplar heaps described in the original paper are worth mentioning:
   at most ⌊log2(n + 1)⌋ + 1 poplars).
 * Only the two rightmost poplars - the smallest ones - can have the same number of elements.
 
-![Poplar heap containing 12 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
+![Poplar heap containing 12 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
 
 Another interesting property of poplar heaps is that a sorted collection is a valid poplar heap. One of the main ideas
 behind poplar sort was that an almost sorted collection would be faster to sort because constructing the poplar heap
@@ -159,7 +159,7 @@ the same properties as a poplar except that its root can be smaller than the roo
 mostly useful to represent an intermediate case when we are building a bigger poplar from two subpoplars and a root.
 Here is an example of a semipoplar:
 
-![Semipoplar containing 7 elements](https://cdn.rawgit.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
+![Semipoplar containing 7 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
 
 A semipoplar can be transformed into a poplar thanks to a procedure called *sift*, which is actually pretty close from
 the equivalent procedure in heapsort: if the root of the semipoplar is smaller than that of a subpoplar, swap it with
@@ -690,7 +690,7 @@ alternate building 15-element poplars and sifting other elements to make bigger 
 not obvious. At some point, I started to draw the following diagram with in mind the question "how many elements do I
 need to sift between each 15-element poplar?":
 
-![Alternating 15-element poplars and single elements](https://github.com/Morwenn/poplar-heap/blob/master/graphs/binary-carry-sequence.png)
+![Alternating 15-element poplars and single elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/binary-carry-sequence.png)
 
 In the diagram above, you can find the global structure of the poplar heap as seen previously, but with a twist: the
 triangles represent 15-element poplars, the circles represent single elements, and the numbers below the triangles
