@@ -217,6 +217,11 @@ a O(n log n) worst case for `poplar::make_heap`.
 *Note: if you're better than I am at formal proofs, you can visit [this issue][issue1] which dicusses whether
 `make_heap` actually has a O(n) worst case.*
 
+The following animation by [@aphitorite](https://github.com/aphitorite) shows how poplar sort constructs and sorts a
+poplar heap:
+
+![Animated poplar sort](https://cdn.discordapp.com/attachments/928795155853623336/970063014004940960/New_Piskel19.gif)
+
 ## Original poplar sort
 
 The original poplar sort algorithm actually stores up to ⌊log2(n + 1)⌋ + 1 integers to represent the positions of the
