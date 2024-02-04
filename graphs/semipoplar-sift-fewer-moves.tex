@@ -8,8 +8,8 @@
 \begin{tikzpicture}[scale=1.5,elem/.style={draw,shape=circle,minimum size=0.75cm},background rectangle/.style={fill=white},show background rectangle]
 
 % Draw the poplar heap nodes
-\node[elem] (n1) at (0,0) {3};
-\node[elem] (n2) at (1,0) {1};
+\node[elem] (n1) at (0,0) {1};
+\node[elem] (n2) at (1,0) {3};
 \node[elem] (n3) at (2,1) {6};
 \node[elem] (n4) at (3,0) {5};
 \node[elem] (n5) at (4,0) {2};
@@ -31,7 +31,7 @@
 
 % Draw the array representation of the poplar heap 
 \tikzstyle{every node}=[draw,shape=rectangle,minimum width=1.5cm,minimum height=0.6cm,anchor=center];
-\foreach \x [count=\idx] in {3,1,6,5,2,7,4}
+\foreach \x [count=\idx] in {1,3,6,5,2,7,4}
   \node (r\idx) at (\idx-1,-0.75){\x};
 
 % Explicitly link the nodes to the array representation
