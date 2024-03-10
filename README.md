@@ -266,11 +266,59 @@ of the other heap operations won't be needlessly higher than needed.
 
 ### Sifting with fewer moves
 
-TODO: description
+The *sift* procedure so far uses swaps to exchange elements, but this is suboptimal: sifting moves the root to _some_
+element in the poplar, and moves every element in the way up one level, which forms a complete cycle of moves.
 
-TODO: image
+![Sifting a poplar with a moves rotation](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar-sift-fewer-moves.png)
 
-TODO: code
+Such a cycle requires moving the root element to a temporary, moving each affected element one level up, then moving
+the temporary (the original root) in its final place. This requires two moves (move to and from temporary), plus one
+per node that needs to be moved up one level. This gives a maximum of $h+2 = \log_2(n+1)+1$ moves for any poplar, with
+a special case of $0$ moves when the root is already the biggest element of the poplar. Considering that a swap
+operation is made of three moves, the "cycle of moves" implementation always performs as least as few moves as the
+swap-based strategy, and fewer moves when the the target node is two levels deep or more.
+
+```cpp
+template<typename Iterator, typename Size>
+void sift(Iterator first, Size size)
+{
+    if (size < 2) return;
+
+    auto root = first + (size - 1);
+    auto child_root1 = root - 1;
+    auto child_root2 = child_root1 - size / 2;
+
+    auto max_root = root;
+    if (*max_root < *child_root1) {
+        max_root = child_root1;
+    }
+    if (*max_root < *child_root2) {
+        max_root = child_root2;
+    }
+    if (max_root != root) {
+        auto value = std::move(*root);
+        do {
+            *root = std::move(*max_root);
+
+            size /= 2;
+            if (size < 2) break;
+
+            root = max_root;
+            child_root1 = root - 1;
+            child_root2 = child_root1 - size / 2;
+
+            auto max_child_it = child_root2;
+            if (*child_root2 < *child_root1) {
+                max_child_it = child_root1;
+            }
+            if (value < *max_child_it) {
+                max_root = max_child_it;
+            }
+        } while (max_root != root);
+        *max_root = std::move(value);
+    }
+}
+```
 
 ### Bottom-up implementation of sift
 
