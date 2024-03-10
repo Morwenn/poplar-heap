@@ -9,7 +9,7 @@ and how to implement and improve the usual heap operations with poplar heaps.
 Now, let's be real: compared to usual binary heap-based based functions, poplar heap-based functions are slow. This
 library does not mean to provide the fastest algorithms. Its goals are different:
 * Explaining what poplars, and poplar heaps are
-* Showing how poplar heaps can be implemented with O(1) extra space
+* Showing how poplar heaps can be implemented with $O(1)$ extra space
 * Showing that operations used in poplar sort can be decoupled
 * Providing proof-of-concept implementations
 * Exploring different implementation strategies for each operation
@@ -137,10 +137,18 @@ The following graph represents a poplar containing seven elements, and shows how
 
 ### Properties of a poplar
 
+Let us first define the following terms:
+* We use the names _elements_ or _nodes_ interchangeably.
+* _leaf nodes_ are nodes that don't have children.
+* _internal nodes_ are nodes that have at least one child.
+* The _size_ $n$ of a poplar is the number of nodes it contains.
+* The _height_ $h$ of a poplar is the number of edges between the root of the poplar and its deepest leaf.
+
 A poplar being a perfect binary tree (a binary tree that is both _full_ and _complete_: all nodes have zero or two children, and all leaves have the same height) with a specific contiguous layout, many of its properties follow [that of perfect binary trees][binary-tree-properties]:
-* A poplar of height $h$ has $2^{h+1}-1$ nodes, which we call the _poplar size_ in the rest of this article and often refer to as $n$.
+* A poplar of height $h$ has $2^{h+1}-1$ nodes.
 * As a result, possible poplar sizes follow [OEIS sequence A000225][OEIS-A000225].
-* A poplar has $\lceil n/2 \rceil$ leaf nodes, and
+* The height of a poplar containing $n$ nodes is $\log_2(n+1)-1$.
+* A poplar has $\lceil n/2 \rceil$ leaf nodes, and $\lfloor n/2 \rfloor$ internal nodes.
 
 Given a poplar of size $n$ backed by an array indexed from $0$:
 * Its root is a index $n-1$.
@@ -151,8 +159,8 @@ Given a poplar of size $n$ backed by an array indexed from $0$:
 
 To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of *semipoplar*: a semipoplar
 has the same properties as a poplar except that its root can be smaller than the roots of its subpoplars. A semipoplar
-is mostly useful to represent an intermediate case when we are building a bigger poplar from two subpoplars and a root.
-Here is an example of a semipoplar:
+is mostly useful to represent an intermediate state when building a bigger poplar from two subpoplars and a root. Here
+is an example of a semipoplar:
 
 ![Semipoplar containing 7 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
 
@@ -161,9 +169,12 @@ Here is an example of a semipoplar:
 A semipoplar can be transformed into a poplar thanks to a procedure called *sift*, which is actually pretty close from
 the equivalent procedure in heapsort: if the root of the semipoplar is smaller than that of a subpoplar, swap it with
 the bigger of the two subpoplar roots, and recursively call *sift* on the subpoplar whose root has been swapped until
-the whole thing becomes a poplar again.
+a leaf has been reached, or until no subpoplar has a root smaller than the current poplar.
 
-TODO: image
+In the following images, thick black arrows represent comparisons, and dashed gray ones represent swaps:
+
+![Sifting a poplar the naive way - first step](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar-sift-naive-1.png)
+![Sifting a poplar the naive way - second step](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar-sift-naive-2.png)
 
 A naive C++ implementation of the algorithm would look like this (to avoid boilerplate, we don't template the examples
 on the comparison operators):
@@ -203,9 +214,55 @@ void sift(Iterator first, Size size)
 }
 ```
 
-### Sifting in O(1) space
+This *sift* procedure performs two node comparisons and at most one swap per recursion. The total number of operations
+performed is bound by its height since only one recursion per level occurs:
+* Max number of comparisons: $2h = 2\log_2(n+1)-1$.
+* Max number of swaps: $h = \log_2(n+1)-1$.
 
-TODO: include version that unrolls tail recursion
+This gives the *sift* operation a complexity of $O(\log n)$ time and $O(\log n)$ space due to the recursion.
+
+### Sifting in $O(1)$ space
+
+The recursive call in *sift* only happens once as the last operation of the procedure, which basically makes *sift* a
+[tail recursive function][tail-call]. Tail recursive functions can usually be rewritten as iterating loops that reuse
+the same stack frame. An optimizing compiler might perform such a rewrite automatically, though writing it out fully
+ensures that no recursion ever occurs:
+
+```cpp
+template<typename Iterator, typename Size>
+void sift(Iterator first, Size size)
+{
+    if (size < 2) return;
+
+    auto root = first + (size - 1);
+    auto child_root1 = root - 1;
+    auto child_root2 = first + (size / 2 - 1);
+
+    while (true) {
+        auto max_root = root;
+        if (*max_root < *child_root1) {
+            max_root = child_root1;
+        }
+        if (*max_root < *child_root2) {
+            max_root = child_root2;
+        }
+        if (max_root == root) return;
+
+        std::iter_swap(root, max_root);
+
+        size /= 2;
+        if (size < 2) return;
+
+        root = max_root;
+        child_root1 = root - 1;
+        child_root2 = max_root - (size - size / 2);
+    }
+}
+```
+
+The change was pretty mechanical change, but we now have the guarantee that *sift* will run in $O(\log n)$ time and
+$O(1)$ space. Considering that it is used pervasively in poplar heap operations, it ensures that the space complexity
+of the other heap operations won't be needlessly higher than needed.
 
 ### Sifting with fewer moves
 
@@ -414,53 +471,6 @@ O(1) space for every operation?
 It turned out to be possible, as we will see in this section.
 
 TODO: reorganize everything
-
-### `sift` with O(1) space
-
-TODO: move that section
-
-The procedure *sift* currently runs in O(log n) space: it can recursively call itself up to log(n) times before the
-semipoplar has been turned into a poplar, and every recursion makes the stack grow. On the other hand the recursive
-call only happens once as the last operation of the procedure, which basically makes *sift* a [tail recursive
-function][tail-call]. An optimizing compiler might transform that into a loop, but we can also do that ourselves just
-to be extra sure:
-
-```cpp
-template<typename Iterator, typename Size>
-void sift(Iterator first, Size size)
-{
-    if (size < 2) return;
-
-    auto root = first + (size - 1);
-    auto child_root1 = root - 1;
-    auto child_root2 = first + (size / 2 - 1);
-
-    while (true) {
-        auto max_root = root;
-        if (*max_root < *child_root1) {
-            max_root = child_root1;
-        }
-        if (*max_root < *child_root2) {
-            max_root = child_root2;
-        }
-        if (max_root == root) return;
-
-        using std::swap;
-        swap(*root, *max_root);
-
-        size /= 2;
-        if (size < 2) return;
-
-        root = max_root;
-        child_root1 = root - 1;
-        child_root2 = max_root - (size - size / 2);
-    }
-}
-```
-
-It was a pretty mechanical change, but we now have the guarantee that *sift* will run in O(log n) time and O(1) space.
-Considering that it is used in most poplar heap operations, it ensures that the space complexities of the other heap
-operations won't grow because of it.
 
 ### Naive `make_heap` and `sort_heap` in O(n log n) time and O(1) space
 
