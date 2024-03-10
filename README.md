@@ -1,17 +1,18 @@
 [![License](http://img.shields.io/:license-MIT--0-yellow.svg)](https://github.com/aws/mit-0)
 
 poplar-heap is a collection of heap algorithms programmed in C++14 whose signatures more or less conrrespond to those
-of the standard library's heap algorithms. However, they use what is known as a "poplar heap" instead of a traditional
+of the standard library heap algorithms. However, they use what is known as a "poplar heap" instead of a traditional
 binary heap to store the data. A poplar heap is a data structure introduced by Coenraad Bron and Wim H. Hesselink in
 their paper *Smoothsort revisited*. We will first describe the library interface, then explain what a poplar heap is,
 and how to implement and improve the usual heap operations with poplar heaps.
 
 Now, let's be real: compared to usual binary heap-based based functions, poplar heap-based functions are slow. This
-library does not mean to provide performant algorithms. Its goals are different:
-* Explaining what poplar heaps are
+library does not mean to provide the fastest algorithms. Its goals are different:
+* Explaining what poplars, and poplar heaps are
 * Showing how poplar heaps can be implemented with O(1) extra space
 * Showing that operations used in poplar sort can be decoupled
-* Providing a proof-of-concept implementation
+* Providing proof-of-concept implementations
+* Exploring different implementation strategies for each operation
 
 *Note: while I didn't know about it when I created this project, what I describe here as a poplar heap has apparently
 already been described as a [post-order heap][post-order-heap] by Nicholas J. A. Harvey & Kevin C. Zatloukal. The space
@@ -20,7 +21,7 @@ prove the complexities of the different poplar heap algorithms), but there is st
 structures: their post-order heap requires the storage of two additional integers to represent the state of the heap,
 while the algorithms I present here only need to know the size of the array used to store the poplar heap. On the other
 hand, they provide formal proofs to demonstrate the complexities of the different operations of a post-order heap while
-I was unable to come up with such formal proofs for the poplar heap (formal proofs are unfortunately not my domain).*
+I was unable to come up with such formal proofs for the poplar heap (such proofs are unfortunately not where I shine).*
 
 # The heap algorithms
 
@@ -118,9 +119,9 @@ which the range `[first, it)` is a poplar heap.
 
 *Complexity:* O(`last - first`) comparisons.
 
-# Poplar heap
+# Anatomy of a poplar heap
 
-### Poplars
+## Poplars
 
 Poplar sort is a heapsort-like algorithm derived from smoothsort that builds a forest of specific trees named
 "poplars" before sorting them. The structure in described as follows in the original *Smoothsort Revisited* paper:
@@ -130,42 +131,42 @@ which is empty or a heap. A heap is called perfect if both subtrees are empty or
 poplar is defined to be a perfect heap mapped on a contiguous section of the array in the form of two subpoplars (or
 empty sections) followed by the root.
 
-Because of its specific structure, we can already intuitively note that the size of a poplar is always a power of two
-minus one. This property is extensively used in the algorithm. The following graph represents a poplar containing seven
-elements, and shows how they are mapped to the backing array:
+The following graph represents a poplar containing seven elements, and shows how they are mapped to the backing array:
 
 ![Poplar containing 7 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/poplar.png)
 
-Now, let us define a "poplar heap" to be a forest of poplars organized in such a way that the bigger poplars come first
-and the smaller poplars come last. Moreover, the poplars should be as big as they possibly can. For example if a poplar
-heap contains 12 elements, it will be made of 4 poplars with respectively 7, 3, 1 and 1 elements. Two properties of
-poplar heaps described in the original paper are worth mentioning:
+### Properties of a poplar
 
-* There can't be more than O(log n) poplars in a poplar heap of n elements (Harvey & Zatloukal give an upper bound of
-  at most ⌊log2(n + 1)⌋ + 1 poplars).
-* Only the two rightmost poplars - the smallest ones - can have the same number of elements.
+A poplar being a perfect binary tree (a binary tree that is both _full_ and _complete_: all nodes have zero or two children, and all leaves have the same height) with a specific contiguous layout, many of its properties follow [that of perfect binary trees][binary-tree-properties]:
+* A poplar of height $h$ has $2^{h+1}-1$ nodes, which we call the _poplar size_ in the rest of this article and often refer to as $n$.
+* As a result, possible poplar sizes follow [OEIS sequence A000225][OEIS-A000225].
+* A poplar has $\lceil n/2 \rceil$ leaf nodes, and
 
-![Poplar heap containing 12 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
+Given a poplar of size $n$ backed by an array indexed from $0$:
+* Its root is a index $n-1$.
+* The root of the right subpoplar is at index $n-2$.
+* The root of the left subpoplar is at index $\lfloor n/2 \rfloor - 1$.
 
-Another interesting property of poplar heaps is that a sorted collection is a valid poplar heap. One of the main ideas
-behind poplar sort was that an almost sorted collection would be faster to sort because constructing the poplar heap
-wouldn't move many elements around, while a regular heapsort can't take advantage of presortedness at all. We will see
-later that this property can actually be used to perform additional optimizations.
+## Semipoplars
 
-### Semipoplars
-
-To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of semipoplar: a semipoplar has
-the same properties as a poplar except that its root can be smaller than the roots of its subpoplars. A semipoplar is
-mostly useful to represent an intermediate case when we are building a bigger poplar from two subpoplars and a root.
+To handle poplars whose root has been replaced, Bron & Hesselink introduce the concept of *semipoplar*: a semipoplar
+has the same properties as a poplar except that its root can be smaller than the roots of its subpoplars. A semipoplar
+is mostly useful to represent an intermediate case when we are building a bigger poplar from two subpoplars and a root.
 Here is an example of a semipoplar:
 
 ![Semipoplar containing 7 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar.png)
 
+### Sifting
+
 A semipoplar can be transformed into a poplar thanks to a procedure called *sift*, which is actually pretty close from
 the equivalent procedure in heapsort: if the root of the semipoplar is smaller than that of a subpoplar, swap it with
 the bigger of the two subpoplar roots, and recursively call *sift* on the subpoplar whose root has been swapped until
-the whole thing becomes a poplar again. A naive C++ implementation of the algorithm would look like this (to avoid
-boilerplate, we don't template the examples on the comparison operators):
+the whole thing becomes a poplar again.
+
+TODO: image
+
+A naive C++ implementation of the algorithm would look like this (to avoid boilerplate, we don't template the examples
+on the comparison operators):
 
 ```cpp
 /**
@@ -202,7 +203,57 @@ void sift(Iterator first, Size size)
 }
 ```
 
-# Poplar sort
+### Sifting in O(1) space
+
+TODO: include version that unrolls tail recursion
+
+### Sifting with fewer moves
+
+TODO: description
+
+TODO: image
+
+TODO: code
+
+### Bottom-up implementation of sift
+
+TODO: description, link to bottom-up heapsort, mention it's just a perfect binary heap regardless of how it's mapped to an array
+
+TODO: image
+
+TODO: code
+
+## Constructing a poplar
+
+TODO: organize the section
+
+## Poplar heap
+
+Now, let us define a "poplar heap" to be a forest of poplars organized in such a way that the bigger poplars come first
+and the smaller poplars come last. Moreover, the poplars should be as big as they possibly can. For example if a poplar
+heap contains 12 elements, it will be made of 4 poplars with respectively 7, 3, 1 and 1 elements.
+
+![Poplar heap containing 12 elements](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/poplar-heap.png)
+
+### Properties of a poplar heap
+
+Two properties of poplar heaps described in the original paper are worth mentioning:
+
+* There can't be more than $O(log n)$ poplars in a poplar heap of n elements (Harvey & Zatloukal give an upper bound of
+  at most $\lfoor \log_2(n + 1) \rfloor + 1$ poplars).
+* Only the two rightmost poplars - the smallest ones - can have the same number of elements.
+
+For a poplar heap of $n$ elements, the number of poplars in the heap follows the [OEIS sequence A192099][OEIS-A192099],
+defined as follows:
+
+> Least number of parts in a partition of n into signed terms of the form 2^k-1.
+
+Another interesting property of poplar heaps is that a sorted collection is a valid poplar heap. One of the main ideas
+behind poplar sort was that an almost sorted collection would be faster to sort because constructing the poplar heap
+wouldn't move many elements around, while a regular heapsort can't take advantage of presortedness at all. We will see
+later that this property can actually be used to perform additional optimizations.
+
+# From poplar heap to poplar sort
 
 As most heapsort-like algorithms, poplar sort is divided into two main parts:
 
@@ -356,13 +407,17 @@ As I worked on poplar sort to try to make it faster, I noticed a few things and 
 possible to make poplar sort run without storing an array of poplars, basically making it run with O(1) extra space and
 thus turning the poplar heap into an [implicit data structure][implicit-data-structure]?
 
-Even better: would it be possible to decouple the heap operations in order to reimplement the heap interface in the C++
+Even better: would it be possible to decouple the heap operations in order to reimplement the heap interface of the C++
 standard library? Would it be possible to do so while keeping the current complexity guarantees of poplar sort and use
 O(1) space for every operation?
 
 It turned out to be possible, as we will see in this section.
 
+TODO: reorganize everything
+
 ### `sift` with O(1) space
+
+TODO: move that section
 
 The procedure *sift* currently runs in O(log n) space: it can recursively call itself up to log(n) times before the
 semipoplar has been turned into a poplar, and every recursion makes the stack grow. On the other hand the recursive
@@ -584,6 +639,8 @@ tests and are worth mentioning anyway.
 
 ### Trivially improving `sort_heap`
 
+TODO: no need for a dedicated section, put that in "naive make_heap and sort_heap"
+
 In the current state of things `pop_heap` computes the size of the sequence it is applied to every time it is called,
 which is kind of suboptimal in `sort_heap` since we know the size to be one less at each iteration. A trivial
 improvement is to pass it down from `sort_heap` instead of recomputing it every time:
@@ -611,6 +668,8 @@ The same improvement can be made to the current implementation of `make_heap`, b
 this function, so it will be left as an exercise to the reader.
 
 ### Top-down `make_heap` implementation
+
+TODO: move first part to "anatomy of a poplar"
 
 One of my first ideas to implement `make_heap` without storing iterators was to implement the function in a top-down
 fashion: we know the size of the poplar heap to build, which means that we know the size of the poplars that will
@@ -956,10 +1015,13 @@ storage where it lives.
 If you have any questions, improvements or proofs to suggest, don't hesitate to open an issue on the project :)
 
 
+  [binary-tree-properties]: https://en.wikipedia.org/wiki/Binary_tree#Properties_of_binary_trees
   [implicit-data-structure]: https://en.wikipedia.org/wiki/Implicit_data_structure
   [issue1]: https://github.com/Morwenn/poplar-heap/issues/1
   [issue2]: https://github.com/Morwenn/poplar-heap/issues/2
+  [OEIS-A000225]: https://oeis.org/A000225
   [OEIS-A007814]: https://oeis.org/A007814
+  [OEIS-A192099]: https://oeis.org/A192099
   [post-order-heap]: https://people.csail.mit.edu/nickh/Publications/PostOrderHeap/FUN_abstract.html
   [std-bit-floor]: https://en.cppreference.com/w/cpp/numeric/bit_floor
   [std-countl-zero]: https://en.cppreference.com/w/cpp/numeric/countl_zero
