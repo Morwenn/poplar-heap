@@ -320,6 +320,12 @@ void sift(Iterator first, Size size)
 }
 ```
 
+If we were to add first-class [projection][projections] support to *sift*, this new algorithm would also permit to
+project the root only once, instead of projecting it with every call to the comparison function. The previous
+impementation performed a number of projection equal to twice the number of comparisons, so at most $4h$ projections;
+the new impementation performs $3$ projections for every $2$ comparisons, plus an additional one for the root, which
+gives a maximum of $3h+1$ projections.
+
 ### Bottom-up implementation of sift
 
 TODO: description, link to bottom-up heapsort, mention it's just a perfect binary heap regardless of how it's mapped to an array
@@ -1081,6 +1087,7 @@ If you have any questions, improvements or proofs to suggest, don't hesitate to 
   [OEIS-A007814]: https://oeis.org/A007814
   [OEIS-A192099]: https://oeis.org/A192099
   [post-order-heap]: https://people.csail.mit.edu/nickh/Publications/PostOrderHeap/FUN_abstract.html
+  [projections]: https://ezoeryou.github.io/blog/article/2019-01-22-ranges-projection.html
   [std-bit-floor]: https://en.cppreference.com/w/cpp/numeric/bit_floor
   [std-countl-zero]: https://en.cppreference.com/w/cpp/numeric/countl_zero
   [std-is-heap]: https://en.cppreference.com/w/cpp/algorithm/is_heap
