@@ -328,11 +328,110 @@ gives a maximum of $3h+1$ projections.
 
 ### Bottom-up implementation of sift
 
-TODO: description, link to bottom-up heapsort, mention it's just a perfect binary heap regardless of how it's mapped to an array
+All in all, a poplar is just a binary heap with a different layout, which means that some techniques used to improve
+sifting on standard binary heaps can also be adapted to sift semipoplars. One such technique is the one used by
+[bottom-up heapsort][bottom-up-heapsort], whose sift works in two phases:
+1. Compare the children of the root together, then recursively apply the same searching procedure to the biggest of its
+   children until a leaf node is found.
+2. Compare the root to that leaf node, then to its parent, then grand-parent, etc. until a node that's greater than the
+   root is found.
 
-TODO: image
+Once the location where to sift the root is found, a move cycle similar to the one described in the previous section is
+performed to put all affected elements back in place and turn the semipoplar into a poplar.
 
-TODO: code
+![Bottom-up sifting of a semipoplar](https://raw.githubusercontent.com/Morwenn/poplar-heap/master/graphs/semipoplar-sift-bottom-up.png)
+
+The main issue compared to bottom-up sifting with a classic binary heap is that it we can't blindly find the parent of
+a node in a poplar without knowing whether the node is the root of the right child or left child of its parent. To
+circumvent that issue, we need to track the path followed during the initial descent, and use that information to go
+back up until the position where to sift the root is found.
+
+This means storing a boolean to represent _LEFT_ or _RIGHT_ for each level of the poplar. Fortunately, the height of a
+poplar being $\log_2(n+1)-1$, we can store those booleans as bits in an unsigned integer, and it will never exceed the
+size of a pointer (by definition an integer big enough to represent $n$ is also big enough to store $\log_2(n)$ bits),
+which means that such a bottom-up *sift* implementation works in $O(1)$ space.
+
+TODO: LEFT/RIGHT sequence for image above, show resulting integer
+
+
+
+TODO: cleanup code, remove projection
+
+```cpp
+template<typename RandomAccessIterator, typename Size>
+void sift(RandomAccessIterator first, Size size)
+{
+    auto size_orig = size;
+
+    if (size < 2) return;
+
+    auto root = first + (size - 1);
+    auto child_root1 = root - 1;
+    auto child_root2 = child_root1 - size / 2;
+
+    // Find the smallest leaf
+    int step = 0; // TODO: rename in depth?
+    unsigned long long track = 0;
+    auto biggest = root;
+    while (true) {
+        if (*child_root1 < *child_root2) {
+            biggest = child_root2;
+        } else {
+            biggest = child_root1;
+            track |= 1;
+        }
+
+        size /= 2;
+        if (size < 2) break;
+
+        child_root1 = biggest - 1;
+        child_root2 = child_root1 - size / 2;
+        track <<= 1;
+        ++step;
+    }
+
+    // Find where to place the root
+    while (*biggest < *root) {
+        if ((track & 1) == 0) {
+            biggest += size + 1;
+        } else {
+            ++biggest;
+        }
+        if (biggest == root) return;
+
+        track >>= 1;
+        --step;
+        size = size * 2 + 1;
+    }
+
+    // Move nodes as needed until they're all in the right place
+    auto tmp = std::move(*root);
+    size = size_orig;
+    child_root1 = root - 1;
+    child_root2 = child_root1 - size / 2;
+
+    while (true) {
+        auto child = (((track >> step) & 1) == 1) ? child_root1 : child_root2;
+        *root = std::move(*child);
+        if (child == biggest) {
+            *biggest = std::move(tmp);
+            return;
+        }
+
+        root = child;
+        size /= 2;
+        child_root1 = root - 1;
+        child_root2 = child_root1 - size / 2;
+        --step;
+    }
+}
+```
+
+TODO: anaysis of the complexity
+TODO: mention number of comparisons, moves, projections
+TODO: for equal/equivalent elements, choose whether to perform fewer moves or fewer comps?
+
+TODO: mention that it supposedly reduces complexity, don't know why, mention empirical evidence
 
 ## Constructing a poplar
 
@@ -1080,6 +1179,7 @@ If you have any questions, improvements or proofs to suggest, don't hesitate to 
 
 
   [binary-tree-properties]: https://en.wikipedia.org/wiki/Binary_tree#Properties_of_binary_trees
+  [bottom-up-heapsort]: https://en.wikipedia.org/wiki/Heapsort#Bottom-up_heapsort
   [implicit-data-structure]: https://en.wikipedia.org/wiki/Implicit_data_structure
   [issue1]: https://github.com/Morwenn/poplar-heap/issues/1
   [issue2]: https://github.com/Morwenn/poplar-heap/issues/2
