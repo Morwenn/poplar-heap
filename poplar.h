@@ -1,7 +1,7 @@
 /*
  * The MIT No Attribution License (MIT-0)
  *
- * Copyright (c) 2017-2020 Morwenn
+ * Copyright (c) 2017-2026 Morwenn
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -129,9 +129,9 @@ namespace poplar
         {
             if (size < 2) return;
 
-            auto root = first + (size - 1);
-            auto child_root1 = root - 1;
-            auto child_root2 = first + (size / 2 - 1);
+            auto root = std::next(first, size - 1);
+            auto child_root1 = std::prev(root);
+            auto child_root2 = std::next(first, size / 2 - 1);
 
             while (true) {
                 auto max_root = root;
@@ -150,8 +150,8 @@ namespace poplar
                 if (size < 2) return;
 
                 root = max_root;
-                child_root1 = root - 1;
-                child_root2 = max_root - (size - size / 2);
+                child_root1 = std::prev(root);
+                child_root2 = std::prev(max_root, size - size / 2);
             }
         }
 
@@ -262,6 +262,7 @@ namespace poplar
             for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
                 it -= poplar_size;
                 poplar_size = 2 * poplar_size + 1;
+                if (poplar_size > size) break;
                 detail::sift(it, poplar_size, compare);
                 ++next;
             }
@@ -324,12 +325,12 @@ namespace poplar
                 poplar_size = 2 * poplar_size + 1;
 
                 // Check poplar property against child roots
-                auto root = it + (poplar_size - 1);
-                auto child_root1 = root - 1;
+                auto root = std::next(it, poplar_size - 1);
+                auto child_root1 = std::prev(root);
                 if (compare(*root, *child_root1)) {
                     return next;
                 }
-                auto child_root2 = it + (poplar_size / 2 - 1);
+                auto child_root2 = std::next(it, poplar_size / 2 - 1);
                 if (compare(*root, *child_root2)) {
                     return next;
                 }

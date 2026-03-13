@@ -181,7 +181,7 @@ void sift(Iterator first, Size size)
 
     // Find the root of the semipoplar and those of the subpoplars
     auto root = first + (size - 1);
-    auto child_root1 = root - 1;
+    auto child_root1 = std::prev(root);
     auto child_root2 = first + (size / 2 - 1);
 
     // Pick the bigger of the roots
@@ -377,7 +377,7 @@ void sift(Iterator first, Size size)
     if (size < 2) return;
 
     auto root = first + (size - 1);
-    auto child_root1 = root - 1;
+    auto child_root1 = std::prev(root);
     auto child_root2 = first + (size / 2 - 1);
 
     while (true) {
@@ -397,7 +397,7 @@ void sift(Iterator first, Size size)
         if (size < 2) return;
 
         root = max_root;
-        child_root1 = root - 1;
+        child_root1 = std::prev(root);
         child_root2 = max_root - (size - size / 2);
     }
 }
@@ -754,6 +754,7 @@ void make_heap(Iterator first, Iterator last)
         for (auto i = (poplar_level & -poplar_level) >> 1 ; i != 0 ; i >>= 1) {
             it -= poplar_size;
             poplar_size = 2 * poplar_size + 1;
+            if (poplar_size > size) break;
             sift(it, poplar_size);
             ++next;
         }
@@ -919,7 +920,7 @@ Iterator is_heap_until(Iterator first, Iterator last)
 
             // Check poplar property against child roots
             auto root = it + (poplar_size - 1);
-            auto child_root1 = root - 1;
+            auto child_root1 = std::prev(root);
             if (*root < *child_root1) {
                 return next;
             }
